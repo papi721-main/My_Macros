@@ -81,9 +81,9 @@ Sub Style_1_Clean_Styles_Comprehensive()
                 With doc.Content.Find
                     .ClearFormatting
                     .Style = currentName
-                    .Replacement.ClearFormatting
-                    .Replacement.Style = doc.styles(targetStyle)
-                    .Replacement.Text = "^&"            ' Native code to preserve existing text unchanged
+                    .replacement.ClearFormatting
+                    .replacement.Style = doc.styles(targetStyle)
+                    .replacement.text = "^&"            ' Native code to preserve existing text unchanged
                     
                     .Execute Replace:=wdReplaceAll
                 End With
@@ -139,7 +139,7 @@ Sub Style_2_Del_Unused_Styles_Optimized()
                         .Execute FindText:="", Format:=True, Wrap:=wdFindStop
                         
                         ' If registered "InUse" but zero structural nodes exist, safe to delete
-                        If Not .Found Then
+                        If Not .found Then
                             sty.Delete
                         End If
                     End With
@@ -234,7 +234,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -242,6 +242,8 @@ Sub Style_4_Adjust_Styles()
 
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5     ' Standard 1.5 line spacing for headings
@@ -273,7 +275,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -281,6 +283,8 @@ Sub Style_4_Adjust_Styles()
 
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
@@ -313,7 +317,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -321,6 +325,8 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
@@ -353,7 +359,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -361,6 +367,8 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
@@ -393,7 +401,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -401,6 +409,8 @@ Sub Style_4_Adjust_Styles()
 
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
@@ -435,7 +445,7 @@ Sub Style_4_Adjust_Styles()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
@@ -443,6 +453,8 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpaceMultiple
@@ -505,13 +517,15 @@ Sub Style_5_Apply_Styles_To_Document()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
             .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5
@@ -524,6 +538,8 @@ Sub Style_5_Apply_Styles_To_Document()
     ' Immediately restores tight single-line spacing inside all tables
     For Each tbl In doc.Tables
         With tbl.Range.ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
             .LineSpacingRule = wdLineSpaceMultiple
@@ -608,9 +624,9 @@ Sub Style_6_Highlight_Duplicate_Styles()
                 With doc.Content.Find
                     .ClearFormatting
                     .Style = sty.NameLocal
-                    .Replacement.ClearFormatting
-                    .Replacement.Highlight = True       ' Enforces highlight application change
-                    .Replacement.Text = "^&"            ' Keeps current alphanumeric values safe
+                    .replacement.ClearFormatting
+                    .replacement.Highlight = True       ' Enforces highlight application change
+                    .replacement.text = "^&"            ' Keeps current alphanumeric values safe
                     
                     ' Apply visual highlights universally
                     .Execute Replace:=wdReplaceAll
@@ -648,7 +664,7 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
         If para.Style = doc.styles("Caption") Then
             
             ' Clean and trim the text to look at the first word safely
-            paraText = Trim(para.Range.Text)
+            paraText = Trim(para.Range.text)
             
             ' Rule 2: Check if the caption specifically starts with "Figure"
             ' (Using UCase and Left handles variations like "Figure 1", "Figure 2.1", etc.)
@@ -669,9 +685,9 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
     MsgBox "Figure caption page layout bounds configured successfully!", vbInformation, "Layout Complete"
 End Sub
 
-Sub Style_9_Apply_Styles_To_Document_V2()
+Sub Style_8_Apply_Styles_To_Document_V2()
 '=============================================================================
-' Name: Style_9_Apply_Styles_To_Document_V2
+' Name: Style_8_Apply_Styles_To_Document_V2()
 ' Purpose: Executes a fully consolidated multi-phase document layout optimization:
 '          1. Direct formats all body text to smash unmanaged layout drifts.
 '          2. Resores tight 1.0 spacing rules to all tabular cell grids.
@@ -712,13 +728,15 @@ Sub Style_9_Apply_Styles_To_Document_V2()
             .Spacing = 0                                ' Resets any manual character spacing adjustments
             .Scaling = 100                              ' Resets any manual font scaling adjustments
             .Kerning = 0                                ' Resets any manual kerning adjustments
-            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
             .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
             .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
             .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
             .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5
@@ -731,6 +749,8 @@ Sub Style_9_Apply_Styles_To_Document_V2()
     ' Immediately restores tight single-line spacing inside all tables
     For Each tbl In doc.Tables
         With tbl.Range.ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
             .LineSpacingRule = wdLineSpaceMultiple
@@ -847,6 +867,7 @@ ErrorHandler:
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Formatting Error"
 End Sub
 
+
 Sub Style_9_Apply_Styles_To_Document_V3()
 '=============================================================================
 ' Name: Style_8_Apply_Styles_To_Document_V3()
@@ -908,6 +929,8 @@ Sub Style_9_Apply_Styles_To_Document_V3()
                 .ContextualAlternates = 0                    ' Disables contextual alternate glyph substitutions
             End With
             With .ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
                 .SpaceBefore = 0
                 .SpaceAfter = 6
                 .LineSpacingRule = wdLineSpace1pt5
@@ -922,6 +945,8 @@ Sub Style_9_Apply_Styles_To_Document_V3()
     For i = 3 To doc.Sections.Count
         For Each tbl In doc.Sections(i).Range.Tables
             With tbl.Range.ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
                 .SpaceBefore = 0
                 .SpaceAfter = 0
                 .LineSpacingRule = wdLineSpaceMultiple
