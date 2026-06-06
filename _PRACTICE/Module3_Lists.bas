@@ -43,6 +43,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 1 style
+            .Size = wdUndefined ' Inherit size from Heading 1 style
         End With
     End With
     
@@ -62,6 +64,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 2 style
+            .Size = wdUndefined ' Inherit size from Heading 2 style
         End With
     End With
     
@@ -81,6 +85,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 3 style
+            .Size = wdUndefined ' Inherit size from Heading 3 style
         End With
     End With
     
@@ -100,6 +106,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 4 style
+            .Size = wdUndefined ' Inherit size from Heading 4 style
         End With
     End With
     
