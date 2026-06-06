@@ -70,10 +70,20 @@ Option Explicit
 ' === Main code / entry point
 '
 ' ============================================================================================
-Sub InsertCrossReference()
-'Private Sub test_InsertCrossReference()
+' Sub InsertCrossReference()
+' 'Private Sub test_InsertCrossReference()
+'     Call InsertCrossReference_
+' End Sub
+
+' NOTE: The module must be named "InsertCrossReference_Custom", otherwise the macro
+'       will replace the built-in function of Word "InsertCrossReference" and then 
+'       you won't be able to use Word's dialog for inserting cross references any more. 
+'       If you want to assign this macro to the ribbon button "Insert -> CrossReference",
+'       just rename this sub to "InsertCrossReference" (without _Custom).
+Sub InsertCrossReference_Custom()
     Call InsertCrossReference_
 End Sub
+
 Function InsertCrossReference_(Optional isActiveState As Variant)
     ' Preparation:
     ' 1) Make sure, the following References are ticked in the VBA editor:
