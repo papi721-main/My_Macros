@@ -498,6 +498,18 @@ Sub Style_5_Apply_Styles_To_Document()
         With .Font
             .Name = "Calibri"
             .Size = 11
+
+            ' ======================================================================
+            ' Advanced Settings
+            ' ======================================================================
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
             .SpaceBefore = 0
@@ -693,6 +705,18 @@ Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
         With .Font
             .Name = "Calibri"
             .Size = 11
+
+            ' ======================================================================
+            ' Advanced Settings
+            ' ======================================================================
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
             .SpaceBefore = 0
