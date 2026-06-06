@@ -640,7 +640,8 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
             
             ' Rule 2: Check if the caption specifically starts with "Figure"
             ' (Using UCase and Left handles variations like "Figure 1", "Figure 2.1", etc.)
-            If UCase(Left(paraText, 6)) = "FIGURE" Then
+            If UCase(Left(paraText, 6)) = "FIGURE" Or _
+               UCase(Left(paraText, 5)) = "PHOTO" Then
                 
                 ' FIXED: Call KeepWithNext directly on the Paragraph object.
                 ' This disconnects the caption from the paragraph below it.
