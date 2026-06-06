@@ -103,3 +103,75 @@ Sub Highlight_Target_Words()
     MsgBox "Target words successfully highlighted within the main document and tables.", _
            vbInformation, "Highlight Processing Complete"
 End Sub
+
+Sub Fix_Common_Misspellings()
+'=============================================================================
+' PURPOSE: Automatically identifies and replaces a pre-configured dictionary
+'          of common misspellings across every single layer of the document.
+' SCOPE:   Main body text, tables, headers, footers, textboxes, and footnotes.
+' RULES:   Case-insensitive matching, but strictly enforces whole-word checks 
+'          to avoid accidentally corrupting longer, correctly spelled words.
+'=============================================================================
+    Dim doc As Document
+    Dim story As Range
+    Dim errorMap As Object
+    Dim incorrectWord As Variant
+    Dim correctWord As String
+    
+    Set doc = ActiveDocument
+    
+    ' Optimize engine performance by turning off screen rendering/flicker
+    Application.ScreenUpdating = False
+    
+    ' Instantiate a high-speed Dictionary object to store spelling pairs
+    Set errorMap = CreateObject("Scripting.Dictionary")
+    
+    '=========================================================================
+    ' CONFIGURATION DICTIONARY: Add your custom spelling mappings here
+    ' Syntax: errorMap.Add "WRONG_WORD", "CORRECT_WORD"
+    '=========================================================================
+    errorMap.Add "wereda", "woreda"
+    errorMap.Add "weredas", "woredas"
+    errorMap.Add "tabel", "table"
+    errorMap.Add "programme", "program"
+    errorMap.Add "labour", "labor"
+    '=========================================================================
+    
+    ' Loop sequentially through every key (incorrect word) in our dictionary
+    For Each incorrectWord In errorMap.Keys
+        correctWord = errorMap(incorrectWord)
+        
+        ' Deep-sweep through all layout story layers (Main text, headers, etc.)
+        For Each story In doc.StoryRanges
+            Do
+                With story.Find
+                    ' Wipe any lingering search parameters from memory
+                    .ClearFormatting
+                    .Replacement.ClearFormatting
+                    
+                    ' Configure replacement criteria
+                    .Text = CStr(incorrectWord)
+                    .Replacement.Text = correctWord
+                    
+                    ' Crucial Safety Controls
+                    .MatchCase = False       ' FALSE: Case-insensitive (catches "Teh", "TEH", "teh")
+                    .MatchWholeWord = True   ' TRUE: Prevents ruining words like "teh" inside "tech"
+                    .Wrap = wdFindStop       ' Clear the active range block exactly once
+                    
+                    ' Fire the global bulk replacement execution pass
+                    .Execute Replace:=wdReplaceAll
+                End With
+                
+                ' Traverse linked story shapes (e.g., text boxes inside footers)
+                Set story = story.NextStoryRange
+            Loop Until story Is Nothing
+        Next story
+    Next incorrectWord
+    
+    ' Restore standard application layout rendering
+    Application.ScreenUpdating = True
+    
+    ' Notify user upon successful completion
+    MsgBox "Spelling correction sweep complete across all document layers!", _
+           vbInformation, "Auto-Correction Successful"
+End Sub
