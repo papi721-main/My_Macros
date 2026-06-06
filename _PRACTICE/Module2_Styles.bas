@@ -669,9 +669,9 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
     MsgBox "Figure caption page layout bounds configured successfully!", vbInformation, "Layout Complete"
 End Sub
 
-Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
+Sub Style_9_Apply_Styles_To_Document_V2()
 '=============================================================================
-' Name: Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing
+' Name: Style_9_Apply_Styles_To_Document_V2
 ' Purpose: Executes a fully consolidated multi-phase document layout optimization:
 '          1. Direct formats all body text to smash unmanaged layout drifts.
 '          2. Resores tight 1.0 spacing rules to all tabular cell grids.
@@ -839,6 +839,201 @@ CleanUp:
     ' Restore standard application window rendering
     Application.ScreenUpdating = True
     MsgBox "Document styles applied and list spaces manually balanced successfully!", vbInformation, "Process Complete"
+    Exit Sub
+
+ErrorHandler:
+    ' Gracefully restore screen rendering before throwing the runtime message box
+    Application.ScreenUpdating = True
+    MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Formatting Error"
+End Sub
+
+Sub Style_9_Apply_Styles_To_Document_V3()
+'=============================================================================
+' Name: Style_8_Apply_Styles_To_Document_V3()
+' Purpose: Executes a fully consolidated multi-phase document layout optimization:
+'          1. Direct formats all body text to smash unmanaged layout drifts
+'             (SKIPS Sections 1 and 2 entirely).
+'          2. Restores tight 1.0 spacing rules to all tabular cell grids.
+'          3. Iterates paragraphs sequentially to calculate context-aware list block values
+'             (Before=0, Inside=0, After=6, Intro Tightening=0).
+'          4. Resolves true and "fake" structural heading paths via Outline Levels.
+'=============================================================================
+    Dim doc As Document
+    Dim tbl As Table
+    Dim para As Paragraph
+    Dim prevPara As Paragraph
+    Dim nextPara As Paragraph
+    Dim rng As Range
+    Dim outLvl As Long
+    Dim isLastItem As Boolean
+    Dim i As Long
+    Dim sec As Section
+    
+    Set doc = ActiveDocument
+    
+    ' Hard Guardrail: If the document doesn't have at least 3 sections, don't run.
+    If doc.Sections.Count < 3 Then
+        MsgBox "The document must contain at least 3 sections to format the content areas safely.", vbExclamation, "Execution Halted"
+        Exit Sub
+    End If
+    
+    ' Speed optimization: Turn off screen updates, animations, and repainting
+    Application.ScreenUpdating = False
+    
+    ' Enable error handling trap
+    On Error GoTo ErrorHandler
+
+    '-------------------------------------------------------------------------
+    ' PHASE 1: GLOBAL DIRECT FORMATTING OVERRIDE (TARGETED)
+    '-------------------------------------------------------------------------
+    ' Uniformly applies baseline body formatting starting precisely from Section 3
+    ' to protect the front matter (Cover page & TOC) from direct overrides.
+    For i = 3 To doc.Sections.Count
+        Set rng = doc.Sections(i).Range
+        With rng
+            With .Font
+                .Name = "Calibri"
+                .Size = 11
+
+                ' ======================================================================
+                ' Advanced Settings
+                ' ======================================================================
+                .Spacing = 0                                ' Resets any manual character spacing adjustments
+                .Scaling = 100                              ' Resets any manual font scaling adjustments
+                .Kerning = 0                                ' Resets any manual kerning adjustments
+                .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+                .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+                .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments
+                .StylisticSet = wdStylisticSetDefault         ' Resets any manual stylistic set selections
+                .ContextualAlternates = 0                    ' Disables contextual alternate glyph substitutions
+            End With
+            With .ParagraphFormat
+                .SpaceBefore = 0
+                .SpaceAfter = 6
+                .LineSpacingRule = wdLineSpace1pt5
+            End With
+        End With
+    Next i
+
+    '-------------------------------------------------------------------------
+    ' PHASE 2: TABLE PROTECTION LOOP
+    '-------------------------------------------------------------------------
+    ' Restores tight single-line spacing inside tables (only in Section 3 and beyond)
+    For i = 3 To doc.Sections.Count
+        For Each tbl In doc.Sections(i).Range.Tables
+            With tbl.Range.ParagraphFormat
+                .SpaceBefore = 0
+                .SpaceAfter = 0
+                .LineSpacingRule = wdLineSpaceMultiple
+                .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates spacing based on font size
+            End With
+        Next tbl
+    Next i
+
+    '-------------------------------------------------------------------------
+    ' CONSOLIDATED SCANNING ENGINE: LIST SPACING & OUTLINE CONVERSIONS
+    '-------------------------------------------------------------------------
+    ' Sweeps paragraphs section-by-section starting cleanly at Section 3.
+    For i = 3 To doc.Sections.Count
+        For Each para In doc.Sections(i).Range.Paragraphs
+            
+            '=====================================================================
+            ' SUB-PHASE A: ADVANCED CONTEXTUAL LIST ADJUSTMENTS
+            '=====================================================================
+            ' HARD GUARDRAIL: Skip paragraph completely if it is an active Heading element
+            If para.OutlineLevel = wdOutlineLevelBodyText Then
+            
+                ' Rule 1: Target active list formatting structures (Bullets, Numbers, Outlines)
+                If para.Range.ListFormat.ListType <> wdListNoNumbering Then
+                    
+                    ' Rule 2: Strictly protect tables by ignoring internal table lists
+                    If Not para.Range.Information(wdWithInTable) Then
+                        
+                        ' STEP 1: LOOK-BEHIND (Tighten Intro Paragraph)
+                        Set prevPara = para.Previous
+                        If Not prevPara Is Nothing Then
+                            ' If the preceding line is NOT a list, this is the FIRST item in the block!
+                            If prevPara.Range.ListFormat.ListType = wdListNoNumbering Then
+                                ' Ensure it isn't a table or a structural heading before modifying it
+                                If Not prevPara.Range.Information(wdWithInTable) And _
+                                   (prevPara.OutlineLevel >= wdOutlineLevelBodyText) Then
+                                    
+                                    prevPara.SpaceAfterAuto = False
+                                    prevPara.SpaceAfter = 0 ' Snaps the introductory text tightly down
+                                    
+                                End If
+                            End If
+                        End If
+        
+                        ' STEP 2: Enforce Base List Geometries
+                        para.SpaceBeforeAuto = False
+                        para.SpaceAfterAuto = False
+                        para.SpaceBefore = 0
+                        para.LineSpacingRule = wdLineSpace1pt5
+                        
+                        ' STEP 3: LOOK-AHEAD (Determine Block End Spacing)
+                        Set nextPara = para.Next
+                        isLastItem = False ' Reset flag for current paragraph
+                        
+                        ' Condition 1: There is no next paragraph (End of Document)
+                        If nextPara Is Nothing Then
+                            isLastItem = True
+                        Else
+                            ' Condition 2: The next paragraph is generic body text
+                            If nextPara.Range.ListFormat.ListType = wdListNoNumbering Then
+                                isLastItem = True
+                            ' Condition 3: The next line drops out of main text space and into a table
+                            ElseIf nextPara.Range.Information(wdWithInTable) Then
+                                isLastItem = True
+                            End If
+                            
+                            ' Condition 4: The next line is explicitly a Heading (Outline Levels 1 to 9)
+                            If nextPara.OutlineLevel >= 1 And nextPara.OutlineLevel <= 9 Then
+                                isLastItem = True
+                            End If
+                        End If
+                        
+                        ' STEP 4: Apply Calculated Spacing Execution
+                        If isLastItem Then
+                            para.SpaceAfter = 6   ' Add professional breathing room at block end
+                        Else
+                            para.SpaceAfter = 0   ' Keep items tightly packed within the block
+                        End If
+                        
+                    End If
+                End If
+                
+            End If
+            
+            '=====================================================================
+            ' SUB-PHASE B: RESTORE & UP-CONVERT HEADING STYLES VIA OUTLINE LEVELS
+            '=====================================================================
+            ' Bypass table contents to ensure data cells are never converted into headings
+            If Not para.Range.Information(wdWithInTable) Then
+                
+                ' Fetch the paragraph's structural Outline Level
+                outLvl = para.OutlineLevel
+                
+                ' Process exclusively if it maps to levels 1, 2, 3, or 4
+                If outLvl >= 1 And outLvl <= 4 Then
+                    With para.Range
+                        ' 1. Peel off Phase 1's direct formatting tape (Calibri 11pt override)
+                        .Font.Reset
+                        
+                        ' 2. Force apply the true built-in Heading Style based on the level digit
+                        .Style = doc.styles("Heading " & outLvl)
+                    End With
+                End If
+                
+            End If
+            
+        Next para
+    Next i
+
+CleanUp:
+    ' Restore standard application window rendering
+    Application.ScreenUpdating = True
+    MsgBox "Document styles applied and list spaces manually balanced successfully (Sections 1 & 2 skipped)!", vbInformation, "Process Complete"
     Exit Sub
 
 ErrorHandler:
