@@ -708,7 +708,8 @@ Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
         With tbl.Range.ParagraphFormat
             .SpaceBefore = 0
             .SpaceAfter = 0
-            .LineSpacingRule = wdLineSpaceSingle
+            .LineSpacingRule = wdLineSpaceMultiple
+            .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates single line spacing based on font size
         End With
     Next tbl
 
