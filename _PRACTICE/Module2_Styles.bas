@@ -258,7 +258,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 18
@@ -281,12 +281,14 @@ Sub Style_4_Adjust_Styles()
 
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
-            .Alignment = wdAlignParagraphJustify   ' Justified alignment for a clean block look
-            .OutlineLevel = wdOutlineLevel1
+            .Alignment = wdAlignParagraphLeft      ' Left-aligned alignment for a clean block look
+            .OutlineLevel = wdOutlineLevel1        ' Ensures proper recognition in the document map, navigation pane, and TOC generation
             .PageBreakBefore = True                ' Enforces new page for each major section
+            .KeepWithNext = True                   ' Prevents orphan headings at bottom of page
+            .KeepTogether = True                   ' Keeps heading on a single page to avoid awkward splits
             .TabStops.ClearAll
         End With
     End With
@@ -298,7 +300,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 16
@@ -319,7 +321,7 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -338,7 +340,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 14
@@ -359,7 +361,7 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -378,7 +380,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 12
@@ -399,7 +401,7 @@ Sub Style_4_Adjust_Styles()
 
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -418,7 +420,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 11
@@ -441,7 +443,7 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .SpaceBefore = 6
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpaceMultiple
             .LineSpacing = LinesToPoints(1.15)      ' Dynamically calculates 1.15x line spacing based on font size
