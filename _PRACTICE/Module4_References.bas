@@ -54,8 +54,11 @@ Sub References_1_Adjust_Table_Of_Contents()
             ' Configure Layout and Indent Spacing
             With .ParagraphFormat
                 ' Establishes a step-ladder indentation framework (Level 1 = 0", Level 2 = 0.2", Level 3 = 0.4", etc.)
+                .FirstLineIndent = InchesToPoints(0)
                 .LeftIndent = InchesToPoints(0.2 * (lvl - 1))
                 .RightIndent = InchesToPoints(0.5)
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
                 .SpaceBefore = 0
                 .SpaceAfter = 0
                 .LineSpacingRule = wdLineSpace1pt5
@@ -108,8 +111,11 @@ Sub References_2_Adjust_Table_of_Figures()
         
         ' Set Paragraph Layout and Spacing Geometries
         With .ParagraphFormat
+            .FirstLineIndent = InchesToPoints(0)
             .LeftIndent = InchesToPoints(0)
             .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
             .LineSpacingRule = wdLineSpace1pt5
