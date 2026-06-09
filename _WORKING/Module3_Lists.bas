@@ -43,6 +43,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 1 style
+            .Size = wdUndefined ' Inherit size from Heading 1 style
         End With
     End With
     
@@ -53,8 +55,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
         .NumberStyle = wdListNumberStyleArabic
         .NumberPosition = InchesToPoints(0)
         .Alignment = wdListLevelAlignLeft
-        .TextPosition = InchesToPoints(0.5)
-        .TabPosition = InchesToPoints(0.5)
+        .TextPosition = InchesToPoints(0.4)
+        .TabPosition = InchesToPoints(0.4)
         .ResetOnHigher = 1                  ' Forces sub-counts to restart when parent shifts
         .StartAt = 1
         .LinkedStyle = "Heading 2"
@@ -62,6 +64,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 2 style
+            .Size = wdUndefined ' Inherit size from Heading 2 style
         End With
     End With
     
@@ -72,8 +76,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
         .NumberStyle = wdListNumberStyleArabic
         .NumberPosition = InchesToPoints(0)
         .Alignment = wdListLevelAlignLeft
-        .TextPosition = InchesToPoints(0.75)
-        .TabPosition = InchesToPoints(0.75)
+        .TextPosition = InchesToPoints(0.6)
+        .TabPosition = InchesToPoints(0.6)
         .ResetOnHigher = 2
         .StartAt = 1
         .LinkedStyle = "Heading 3"
@@ -81,6 +85,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 3 style
+            .Size = wdUndefined ' Inherit size from Heading 3 style
         End With
     End With
     
@@ -91,8 +97,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
         .NumberStyle = wdListNumberStyleArabic
         .NumberPosition = InchesToPoints(0)
         .Alignment = wdListLevelAlignLeft
-        .TextPosition = InchesToPoints(1)
-        .TabPosition = InchesToPoints(1)
+        .TextPosition = InchesToPoints(0.65)
+        .TabPosition = InchesToPoints(0.65)
         .ResetOnHigher = 3
         .StartAt = 1
         .LinkedStyle = "Heading 4"
@@ -100,6 +106,8 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
             .Name = "Calibri"
             .Bold = True
             .Italic = False
+            .Color = wdUndefined ' Inherit color from Heading 4 style
+            .Size = wdUndefined ' Inherit size from Heading 4 style
         End With
     End With
     

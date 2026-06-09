@@ -8,20 +8,34 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
 ' Purpose: Loops through all document sections and configures page setups.
 '          Detects portrait vs. landscape orientations and assigns clean,
 '          standardized A4 dimensions and precise 0.25"/0.75" margin bounds.
+'          SAFE GUARDRAIL: Automatically bypasses sections locked by framed
+'          paragraphs or unmodifiable layout anomalies.
+'          REPORTER: Tracks and displays skipped sections at completion.
 '=============================================================================
+    Dim doc As Document
     Dim sec As Section
     Dim targetOrient As Long
     Dim targetWidth As Double
     Dim targetHeight As Double
+    Dim i As Long
+    
+    ' Tracking variables for the final report
+    Dim skippedSections As String
+    Dim successCount As Long
+    
+    Set doc = ActiveDocument
+    skippedSections = ""
+    successCount = 0
     
     ' Speed optimization: Prevent screen flickering during deep object changes
     Application.ScreenUpdating = False
     
-    ' Enable error handling trap
+    ' Enable global error handling trap for unexpected core execution errors
     On Error GoTo CleanUp
     
-    ' Loop through every isolated section block in the active document
-    For Each sec In ActiveDocument.Sections
+    ' Loop through every isolated section block using a counter to remain stable
+    For i = 1 To doc.Sections.Count
+        Set sec = doc.Sections(i)
         
         ' Determine targeted A4 dimensions based on existing page orientation
         Select Case sec.PageSetup.Orientation
@@ -36,9 +50,21 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
                 targetHeight = 8.27   ' A4 Landscape Height in inches
                 
             Case Else
-                ' Bypass unexpected or unreadable core layouts safely
+                ' Log as skipped if orientation is unreadable
+                If skippedSections = "" Then
+                    skippedSections = CStr(i)
+                Else
+                    skippedSections = skippedSections & ", " & i
+                End If
                 GoTo NextSection
         End Select
+        
+        ' ---------------------------------------------------------------------
+        ' LOCAL INLINE SAFETY GUARDRAIL FOR FRAMED PARAGRAPHS
+        ' ---------------------------------------------------------------------
+        ' If a section contains a framed paragraph, accessing its PageSetup properties
+        ' throws an error. We suppress the error, attempt the block, and verify success.
+        On Error Resume Next
         
         ' Mass-apply explicit geometry specifications to the targeted section
         With sec.PageSetup
@@ -78,19 +104,52 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
             .BookFoldPrintingSheets = 1
             .GutterPos = wdGutterPosLeft
         End With
+        
+        ' Check if the PageSetup properties threw a frame-lock error
+        If Err.Number <> 0 Then
+            ' Clear the error and log this specific section number as skipped
+            Err.Clear
+            If skippedSections = "" Then
+                skippedSections = CStr(i)
+            Else
+                skippedSections = skippedSections & ", " & i
+            End If
+        Else
+            ' No error occurred; increment our success tracker
+            successCount = successCount + 1
+        End If
+        
+        ' Reset global error trapping rules for the next iteration step
+        On Error GoTo CleanUp
 
 NextSection:
-    Next sec
+    Next i
 
-    ' Standard Completion Execution Path
+    ' Restore standard application window rendering
     Application.ScreenUpdating = True
-    MsgBox "Layout applied to all sections.", vbInformation, "Success"
+    
+    ' Format and present the final completion report message box
+    Dim reportMessage As String
+    reportMessage = "Layout processing complete." & vbCrLf & vbCrLf & _
+                    "Sections adjusted successfully: " & successCount
+                    
+    If skippedSections <> "" Then
+        reportMessage = reportMessage & vbCrLf & vbCrLf & _
+                        "?? ATTENTION: The following sections were SKIPPED " & _
+                        "because they contain a locked or framed paragraph:" & vbCrLf & _
+                        "Section(s): " & skippedSections & vbCrLf & vbCrLf & _
+                        "Please inspect and adjust these sections manually."
+        MsgBox reportMessage, vbWarning, "Process Complete with Bypasses"
+    Else
+        MsgBox reportMessage, vbInformation, "Success"
+    End If
+    
     Exit Sub ' Secure break preventing fall-through into error sequence
 
 CleanUp:
     ' Emergency Handling Sequence (Triggers only upon structural execution faults)
     Application.ScreenUpdating = True
-    MsgBox "An error occurred: " & Err.Description, vbExclamation, "Error"
+    MsgBox "An unexpected error occurred: " & Err.Description, vbCritical, "Execution Fault"
 End Sub
 
 

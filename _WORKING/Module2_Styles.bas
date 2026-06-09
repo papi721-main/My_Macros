@@ -81,9 +81,9 @@ Sub Style_1_Clean_Styles_Comprehensive()
                 With doc.Content.Find
                     .ClearFormatting
                     .Style = currentName
-                    .Replacement.ClearFormatting
-                    .Replacement.Style = doc.styles(targetStyle)
-                    .Replacement.Text = "^&"            ' Native code to preserve existing text unchanged
+                    .replacement.ClearFormatting
+                    .replacement.Style = doc.styles(targetStyle)
+                    .replacement.text = "^&"            ' Native code to preserve existing text unchanged
                     
                     .Execute Replace:=wdReplaceAll
                 End With
@@ -139,7 +139,7 @@ Sub Style_2_Del_Unused_Styles_Optimized()
                         .Execute FindText:="", Format:=True, Wrap:=wdFindStop
                         
                         ' If registered "InUse" but zero structural nodes exist, safe to delete
-                        If Not .Found Then
+                        If Not .found Then
                             sty.Delete
                         End If
                     End With
@@ -219,13 +219,37 @@ Sub Style_4_Adjust_Styles()
     With doc.styles("Normal")
         .AutomaticallyUpdate = False
         With .Font
+            ' Basic Font Settings
             .Name = "Calibri"
             .Size = 11
             .Bold = False
             .Italic = False
             .Color = wdColorAutomatic
+            .Outline = False            ' Removes any unwanted borders around text
+            .Shadow = False             ' Removes any unwanted shadow effects on text
+            .Emboss = False             ' Removes any unwanted embossing effects on text
+            .Engrave = False            ' Removes any unwanted engraving effects on text
+            
+            ' Advanced Settings
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+
         End With
         With .ParagraphFormat
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .OutlineLevel = wdOutlineLevelBodyText
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5     ' Standard 1.5 line spacing for headings
@@ -242,7 +266,7 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 18
@@ -250,14 +274,36 @@ Sub Style_4_Adjust_Styles()
             .Italic = False
             .AllCaps = True
             .Color = wdColorAutomatic
+
+            
+            ' Advanced Settings
+            ' ------------------
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
-            .Alignment = wdAlignParagraphJustify   ' Justified alignment for a clean block look
-            .OutlineLevel = wdOutlineLevel1
+            .Alignment = wdAlignParagraphLeft      ' Left-aligned alignment for a clean block look
+            .OutlineLevel = wdOutlineLevel1        ' Ensures proper recognition in the document map, navigation pane, and TOC generation
             .PageBreakBefore = True                ' Enforces new page for each major section
+            .KeepWithNext = True                   ' Prevents orphan headings at bottom of page
+            .KeepTogether = True                   ' Keeps heading on a single page to avoid awkward splits
             .TabStops.ClearAll
         End With
     End With
@@ -269,16 +315,35 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 16
             .Bold = True
             .Italic = False
             .Color = wdColorAutomatic
+            
+            ' Advanced Settings
+            ' ------------------
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+            
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -297,16 +362,35 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 14
             .Bold = True
             .Italic = False
             .Color = wdColorAutomatic
+            
+            ' Advanced Settings
+            ' ------------------
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+            
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -325,16 +409,35 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 12
             .Bold = True
             .Italic = False
             .Color = wdColorAutomatic
+
+            ' Advanced Settings
+            ' ------------------
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
+            .SpaceBefore = 6
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
             .Alignment = wdAlignParagraphLeft
@@ -353,23 +456,40 @@ Sub Style_4_Adjust_Styles()
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
-        .NoSpaceBetweenParagraphsOfSameStyle = False
+        .NoSpaceBetweenParagraphsOfSameStyle = True
         With .Font
             .Name = "Calibri"
             .Size = 11
             .Bold = True
             .Italic = True
             .Color = wdColorAutomatic
+            .AllCaps = False
+            .SmallCaps = False
+
+            ' Advanced Settings
+            ' ------------------
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
+            
         End With
         With .ParagraphFormat
-            .SpaceBefore = 0
-            .SpaceAfter = 0
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
+            .SpaceBefore = 6
+            .SpaceAfter = 6
             .LineSpacingRule = wdLineSpaceMultiple
             .LineSpacing = LinesToPoints(1.15)      ' Dynamically calculates 1.15x line spacing based on font size
             .Alignment = wdAlignParagraphJustify
             .KeepWithNext = True
             .KeepTogether = True
             .WidowControl = True
+            .OutlineLevel = wdOutlineLevelBodyText
             .TabStops.ClearAll
         End With
     End With
@@ -389,7 +509,7 @@ Sub Style_5_Apply_Styles_To_Document()
 ' Name: Style_5_Apply_Styles_To_Document
 ' Purpose: Executes a 3-phase optimization pipeline:
 '          1. Direct formats all body text to smash manual style overrides.
-'          2. Restores tight 1.0 spacing and 0/0 padding to all Tables.
+'          2. Restores tight 1.15pt spacing and 0/0 padding to all Tables.
 '          3. Scans paragraphs in a single pass via Outline Levels to capture
 '             true headings AND "fake" headings, resetting their fonts.
 '=============================================================================
@@ -416,8 +536,22 @@ Sub Style_5_Apply_Styles_To_Document()
         With .Font
             .Name = "Calibri"
             .Size = 11
+
+            ' ======================================================================
+            ' Advanced Settings
+            ' ======================================================================
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5
@@ -430,16 +564,19 @@ Sub Style_5_Apply_Styles_To_Document()
     ' Immediately restores tight single-line spacing inside all tables
     For Each tbl In doc.Tables
         With tbl.Range.ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
-            .LineSpacingRule = wdLineSpaceSingle
+            .LineSpacingRule = wdLineSpaceMultiple
+            .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates single line spacing based on font size
 
             ' If you want to use a specific line spacing value instead
             ' of single spacing, you can uncomment the following line
             ' and set your desired spacing in points
             ' --------------------------------------
             ' .LineSpacingRule = wdLineSpaceMultiple
-            ' .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates
+            ' .LineSpacing = LinesToPoints(1.15)
         End With
     Next tbl
 
@@ -513,9 +650,9 @@ Sub Style_6_Highlight_Duplicate_Styles()
                 With doc.Content.Find
                     .ClearFormatting
                     .Style = sty.NameLocal
-                    .Replacement.ClearFormatting
-                    .Replacement.Highlight = True       ' Enforces highlight application change
-                    .Replacement.Text = "^&"            ' Keeps current alphanumeric values safe
+                    .replacement.ClearFormatting
+                    .replacement.Highlight = True       ' Enforces highlight application change
+                    .replacement.text = "^&"            ' Keeps current alphanumeric values safe
                     
                     ' Apply visual highlights universally
                     .Execute Replace:=wdReplaceAll
@@ -553,11 +690,12 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
         If para.Style = doc.styles("Caption") Then
             
             ' Clean and trim the text to look at the first word safely
-            paraText = Trim(para.Range.Text)
+            paraText = Trim(para.Range.text)
             
             ' Rule 2: Check if the caption specifically starts with "Figure"
             ' (Using UCase and Left handles variations like "Figure 1", "Figure 2.1", etc.)
-            If UCase(Left(paraText, 6)) = "FIGURE" Then
+            If UCase(Left(paraText, 6)) = "FIGURE" Or _
+               UCase(Left(paraText, 5)) = "PHOTO" Then
                 
                 ' FIXED: Call KeepWithNext directly on the Paragraph object.
                 ' This disconnects the caption from the paragraph below it.
@@ -573,9 +711,9 @@ Sub Style_7_Configure_Figure_Caption_KeepWithNext()
     MsgBox "Figure caption page layout bounds configured successfully!", vbInformation, "Layout Complete"
 End Sub
 
-Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
+Sub Style_8_Apply_Styles_To_Document_V2()
 '=============================================================================
-' Name: Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing
+' Name: Style_8_Apply_Styles_To_Document_V2()
 ' Purpose: Executes a fully consolidated multi-phase document layout optimization:
 '          1. Direct formats all body text to smash unmanaged layout drifts.
 '          2. Resores tight 1.0 spacing rules to all tabular cell grids.
@@ -609,8 +747,22 @@ Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
         With .Font
             .Name = "Calibri"
             .Size = 11
+
+            ' ======================================================================
+            ' Advanced Settings
+            ' ======================================================================
+            .Spacing = 0                                ' Resets any manual character spacing adjustments
+            .Scaling = 100                              ' Resets any manual font scaling adjustments
+            .Kerning = 0                                ' Resets any manual kerning adjustments
+            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
+            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
+            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
         End With
         With .ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5
@@ -623,9 +775,12 @@ Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
     ' Immediately restores tight single-line spacing inside all tables
     For Each tbl In doc.Tables
         With tbl.Range.ParagraphFormat
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
-            .LineSpacingRule = wdLineSpaceSingle
+            .LineSpacingRule = wdLineSpaceMultiple
+            .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates single line spacing based on font size
         End With
     Next tbl
 
@@ -718,7 +873,7 @@ Sub Style_8_Apply_Styles_To_Document_And_Fix_List_Spacing()
                     .Font.Reset
                     
                     ' 2. Force apply the true built-in Heading Style based on the level digit
-                    .Style = doc.Styles("Heading " & outLvl)
+                    .Style = doc.styles("Heading " & outLvl)
                 End With
             End If
             
@@ -730,6 +885,206 @@ CleanUp:
     ' Restore standard application window rendering
     Application.ScreenUpdating = True
     MsgBox "Document styles applied and list spaces manually balanced successfully!", vbInformation, "Process Complete"
+    Exit Sub
+
+ErrorHandler:
+    ' Gracefully restore screen rendering before throwing the runtime message box
+    Application.ScreenUpdating = True
+    MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Formatting Error"
+End Sub
+
+
+Sub Style_9_Apply_Styles_To_Document_V3()
+'=============================================================================
+' Name: Style_8_Apply_Styles_To_Document_V3()
+' Purpose: Executes a fully consolidated multi-phase document layout optimization:
+'          1. Direct formats all body text to smash unmanaged layout drifts
+'             (SKIPS Sections 1 and 2 entirely).
+'          2. Restores tight 1.0 spacing rules to all tabular cell grids.
+'          3. Iterates paragraphs sequentially to calculate context-aware list block values
+'             (Before=0, Inside=0, After=6, Intro Tightening=0).
+'          4. Resolves true and "fake" structural heading paths via Outline Levels.
+'=============================================================================
+    Dim doc As Document
+    Dim tbl As Table
+    Dim para As Paragraph
+    Dim prevPara As Paragraph
+    Dim nextPara As Paragraph
+    Dim rng As Range
+    Dim outLvl As Long
+    Dim isLastItem As Boolean
+    Dim i As Long
+    Dim sec As Section
+    
+    Set doc = ActiveDocument
+    
+    ' Hard Guardrail: If the document doesn't have at least 3 sections, don't run.
+    If doc.Sections.Count < 3 Then
+        MsgBox "The document must contain at least 3 sections to format the content areas safely.", vbExclamation, "Execution Halted"
+        Exit Sub
+    End If
+    
+    ' Speed optimization: Turn off screen updates, animations, and repainting
+    Application.ScreenUpdating = False
+    
+    ' Enable error handling trap
+    On Error GoTo ErrorHandler
+
+    '-------------------------------------------------------------------------
+    ' PHASE 1: GLOBAL DIRECT FORMATTING OVERRIDE (TARGETED)
+    '-------------------------------------------------------------------------
+    ' Uniformly applies baseline body formatting starting precisely from Section 3
+    ' to protect the front matter (Cover page & TOC) from direct overrides.
+    For i = 3 To doc.Sections.Count
+        Set rng = doc.Sections(i).Range
+        With rng
+            With .Font
+                .Name = "Calibri"
+                .Size = 11
+
+                ' ======================================================================
+                ' Advanced Settings
+                ' ======================================================================
+                .Spacing = 0                                ' Resets any manual character spacing adjustments
+                .Scaling = 100                              ' Resets any manual font scaling adjustments
+                .Kerning = 0                                ' Resets any manual kerning adjustments
+                .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
+                .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
+                .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments
+                .StylisticSet = wdStylisticSetDefault         ' Resets any manual stylistic set selections
+                .ContextualAlternates = 0                    ' Disables contextual alternate glyph substitutions
+            End With
+            With .ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                .SpaceAfter = 6
+                .LineSpacingRule = wdLineSpace1pt5
+            End With
+        End With
+    Next i
+
+    '-------------------------------------------------------------------------
+    ' PHASE 2: TABLE PROTECTION LOOP
+    '-------------------------------------------------------------------------
+    ' Restores tight single-line spacing inside tables (only in Section 3 and beyond)
+    For i = 3 To doc.Sections.Count
+        For Each tbl In doc.Sections(i).Range.Tables
+            With tbl.Range.ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                .SpaceAfter = 0
+                .LineSpacingRule = wdLineSpaceMultiple
+                .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates spacing based on font size
+            End With
+        Next tbl
+    Next i
+
+    '-------------------------------------------------------------------------
+    ' CONSOLIDATED SCANNING ENGINE: LIST SPACING & OUTLINE CONVERSIONS
+    '-------------------------------------------------------------------------
+    ' Sweeps paragraphs section-by-section starting cleanly at Section 3.
+    For i = 3 To doc.Sections.Count
+        For Each para In doc.Sections(i).Range.Paragraphs
+            
+            '=====================================================================
+            ' SUB-PHASE A: ADVANCED CONTEXTUAL LIST ADJUSTMENTS
+            '=====================================================================
+            ' HARD GUARDRAIL: Skip paragraph completely if it is an active Heading element
+            If para.OutlineLevel = wdOutlineLevelBodyText Then
+            
+                ' Rule 1: Target active list formatting structures (Bullets, Numbers, Outlines)
+                If para.Range.ListFormat.ListType <> wdListNoNumbering Then
+                    
+                    ' Rule 2: Strictly protect tables by ignoring internal table lists
+                    If Not para.Range.Information(wdWithInTable) Then
+                        
+                        ' STEP 1: LOOK-BEHIND (Tighten Intro Paragraph)
+                        Set prevPara = para.Previous
+                        If Not prevPara Is Nothing Then
+                            ' If the preceding line is NOT a list, this is the FIRST item in the block!
+                            If prevPara.Range.ListFormat.ListType = wdListNoNumbering Then
+                                ' Ensure it isn't a table or a structural heading before modifying it
+                                If Not prevPara.Range.Information(wdWithInTable) And _
+                                   (prevPara.OutlineLevel >= wdOutlineLevelBodyText) Then
+                                    
+                                    prevPara.SpaceAfterAuto = False
+                                    prevPara.SpaceAfter = 0 ' Snaps the introductory text tightly down
+                                    
+                                End If
+                            End If
+                        End If
+        
+                        ' STEP 2: Enforce Base List Geometries
+                        para.SpaceBeforeAuto = False
+                        para.SpaceAfterAuto = False
+                        para.SpaceBefore = 0
+                        para.LineSpacingRule = wdLineSpace1pt5
+                        
+                        ' STEP 3: LOOK-AHEAD (Determine Block End Spacing)
+                        Set nextPara = para.Next
+                        isLastItem = False ' Reset flag for current paragraph
+                        
+                        ' Condition 1: There is no next paragraph (End of Document)
+                        If nextPara Is Nothing Then
+                            isLastItem = True
+                        Else
+                            ' Condition 2: The next paragraph is generic body text
+                            If nextPara.Range.ListFormat.ListType = wdListNoNumbering Then
+                                isLastItem = True
+                            ' Condition 3: The next line drops out of main text space and into a table
+                            ElseIf nextPara.Range.Information(wdWithInTable) Then
+                                isLastItem = True
+                            End If
+                            
+                            ' Condition 4: The next line is explicitly a Heading (Outline Levels 1 to 9)
+                            If nextPara.OutlineLevel >= 1 And nextPara.OutlineLevel <= 9 Then
+                                isLastItem = True
+                            End If
+                        End If
+                        
+                        ' STEP 4: Apply Calculated Spacing Execution
+                        If isLastItem Then
+                            para.SpaceAfter = 6   ' Add professional breathing room at block end
+                        Else
+                            para.SpaceAfter = 0   ' Keep items tightly packed within the block
+                        End If
+                        
+                    End If
+                End If
+                
+            End If
+            
+            '=====================================================================
+            ' SUB-PHASE B: RESTORE & UP-CONVERT HEADING STYLES VIA OUTLINE LEVELS
+            '=====================================================================
+            ' Bypass table contents to ensure data cells are never converted into headings
+            If Not para.Range.Information(wdWithInTable) Then
+                
+                ' Fetch the paragraph's structural Outline Level
+                outLvl = para.OutlineLevel
+                
+                ' Process exclusively if it maps to levels 1, 2, 3, or 4
+                If outLvl >= 1 And outLvl <= 4 Then
+                    With para.Range
+                        ' 1. Peel off Phase 1's direct formatting tape (Calibri 11pt override)
+                        .Font.Reset
+                        
+                        ' 2. Force apply the true built-in Heading Style based on the level digit
+                        .Style = doc.styles("Heading " & outLvl)
+                    End With
+                End If
+                
+            End If
+            
+        Next para
+    Next i
+
+CleanUp:
+    ' Restore standard application window rendering
+    Application.ScreenUpdating = True
+    MsgBox "Document styles applied and list spaces manually balanced successfully (Sections 1 & 2 skipped)!", vbInformation, "Process Complete"
     Exit Sub
 
 ErrorHandler:

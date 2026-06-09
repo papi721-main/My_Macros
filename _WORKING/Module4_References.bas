@@ -2,13 +2,12 @@
 ' MODULE: Reference Tables & Automated Document Indexes
 '=============================================================================
 
-Sub References_1_Build_TOC()
+Sub References_1_Adjust_Table_Of_Contents()
 '=============================================================================
-' Name: References_1_Build_TOC
-' Purpose: Automatically loops through and formats document TOC styles (1-5) 
-'          with step-ladder indentation. Drops an automated Table of Contents
-'          at the active cursor, configured to display only levels 1 to 3, 
-'          while keeping hidden styling pre-cached for levels 4 and 5.
+' Name: References_1_Adjust_Table_Of_Contents
+' Purpose: Automatically loops through and formats document TOC styles (1-5)
+'          with step-ladder indentation. This is used for the configuring the
+'          TOC styles only, it does not generate the TOC.
 '=============================================================================
     Dim doc As Document
     Dim lvl As Integer
@@ -20,7 +19,7 @@ Sub References_1_Build_TOC()
     Application.ScreenUpdating = False
     
     '-------------------------------------------------------------------------
-    ' 1. OPTIMIZE AND BUILD TOC STYLES (LEVELS 1 TO 5)
+    ' FORMAT TOC STYLES (LEVELS 1 TO 5)
     '-------------------------------------------------------------------------
     ' Uniformly cycles through all five styles using a loop to bypass recording clutter
     For lvl = 1 To 5
@@ -44,7 +43,7 @@ Sub References_1_Build_TOC()
                 .AllCaps = False
                 .SmallCaps = False
                 
-                ' Level 1 gets strong visual emphasis (Bold + All Caps); 
+                ' Level 1 gets strong visual emphasis (Bold + All Caps);
                 ' Deeper child levels (2-5) remain low-profile and standard.
                 If lvl = 1 Then
                     .Bold = True
@@ -55,8 +54,11 @@ Sub References_1_Build_TOC()
             ' Configure Layout and Indent Spacing
             With .ParagraphFormat
                 ' Establishes a step-ladder indentation framework (Level 1 = 0", Level 2 = 0.2", Level 3 = 0.4", etc.)
+                .FirstLineIndent = InchesToPoints(0)
                 .LeftIndent = InchesToPoints(0.2 * (lvl - 1))
                 .RightIndent = InchesToPoints(0.5)
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
                 .SpaceBefore = 0
                 .SpaceAfter = 0
                 .LineSpacingRule = wdLineSpace1pt5
@@ -68,44 +70,18 @@ Sub References_1_Build_TOC()
             End With
         End With
     Next lvl
-
-    '-------------------------------------------------------------------------
-    ' 2. GENERATE THE TABLE OF CONTENTS (SHOWS LEVELS 1-3 ONLY)
-    '-------------------------------------------------------------------------
-    With doc
-        ' Generate a fresh Table of Contents instance over the active cursor.
-        ' Note: LowerHeadingLevel is explicitly locked to 3 so levels 4 & 5 do not render.
-        .TablesOfContents.Add Range:=Selection.Range, _
-                              RightAlignPageNumbers:=True, _
-                              UseHeadingStyles:=True, _
-                              UpperHeadingLevel:=1, _
-                              LowerHeadingLevel:=3, _
-                              IncludePageNumbers:=True, _
-                              AddedStyles:="", _
-                              UseHyperlinks:=True, _
-                              HidePageNumbersInWeb:=True, _
-                              UseOutlineLevels:=True
-        
-        ' Enforce standard dot leaders on the freshly built index field
-        .TablesOfContents(1).TabLeader = wdTabLeaderDots
-        
-        ' Setting format container to wdTOCNormal lets elements dynamically target 
-        ' your custom style properties seamlessly without breaking the margin tab tracks.
-        .TablesOfContents.Format = wdTOCNormal
-    End With
     
     ' Re-enable system workspace rendering
     Application.ScreenUpdating = True
     
-    ' Completion message deactivated per request
-    ' MsgBox "Custom Table of Contents generated successfully!", vbInformation, "TOC Complete"
+    ' Completion message
+    MsgBox "Table of Contents formatted successfully!", vbInformation, "Table of Contents Formatting Complete"
 End Sub
-
 
 Sub References_2_Adjust_Table_of_Figures()
 '=============================================================================
 ' Name: References_2_Adjust_Table_of_Figures
-' Purpose: Accesses and standardizes typography, tab alignments, and row 
+' Purpose: Accesses and standardizes typography, tab alignments, and row
 '          line spacing for the native, built-in Table of Figures document style.
 '=============================================================================
     Dim doc As Document
@@ -130,17 +106,23 @@ Sub References_2_Adjust_Table_of_Figures()
             .Underline = wdUnderlineNone
             .Color = wdColorAutomatic
             .AllCaps = False
+            .SmallCaps = False
         End With
         
         ' Set Paragraph Layout and Spacing Geometries
         With .ParagraphFormat
+            .FirstLineIndent = InchesToPoints(0)
             .LeftIndent = InchesToPoints(0)
             .RightIndent = InchesToPoints(0)
+            .SpaceBeforeAuto = False
+            .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 0
             .LineSpacingRule = wdLineSpace1pt5
-            .Alignment = wdAlignParagraphJustify
+            .Alignment = wdAlignParagraphLeft
             .OutlineLevel = wdOutlineLevelBodyText
+            .FirstLineIndent = InchesToPoints(-0.63)  ' Negative first line indent to pull figure numbers flush left at the margin
+            .LeftIndent = InchesToPoints(0.63)  ' Standard indent for figure entries to align second line text with figure numbers
             
             ' Clear unmanaged manual tab stops to ensure clean right-flushed page numbers
             .TabStops.ClearAll
@@ -149,4 +131,56 @@ Sub References_2_Adjust_Table_of_Figures()
     
     ' Re-enable system workspace rendering
     Application.ScreenUpdating = True
+    
+    ' Completion message
+    MsgBox "Table of Figures formatted successfully!", vbInformation, "Tabel of Figues Formatting Complete"
 End Sub
+
+Sub References_3_Build_TOC()
+'=============================================================================
+' Name: References_3_Build_TOC
+' Purpose: Drops an automated Table of Contents at the active cursor,
+'          configured to display only levels 1 to 3, while keeping hidden
+'          styling pre-cached for levels 4 and 5.
+'=============================================================================
+    Dim doc As Document
+    Dim lvl As Integer
+    Dim tocStyleName As String
+    
+    Set doc = ActiveDocument
+    
+    ' Speed optimization: Turn off screen updates while drawing reference matrices
+    Application.ScreenUpdating = False
+    
+    '-------------------------------------------------------------------------
+    ' GENERATE THE TABLE OF CONTENTS (SHOWS LEVELS 1-3 ONLY)
+    '-------------------------------------------------------------------------
+    With doc
+        ' Generate a fresh Table of Contents instance over the active cursor.
+        ' Note: LowerHeadingLevel is explicitly locked to 3 so levels 4 & 5 do not render.
+        .TablesOfContents.Add Range:=Selection.Range, _
+                              RightAlignPageNumbers:=True, _
+                              UseHeadingStyles:=True, _
+                              UpperHeadingLevel:=1, _
+                              LowerHeadingLevel:=3, _
+                              IncludePageNumbers:=True, _
+                              AddedStyles:="", _
+                              UseHyperlinks:=True, _
+                              HidePageNumbersInWeb:=True, _
+                              UseOutlineLevels:=True
+        
+        ' Enforce standard dot leaders on the freshly built index field
+        .TablesOfContents(1).TabLeader = wdTabLeaderDots
+        
+        ' Setting format container to wdTOCNormal lets elements dynamically target
+        ' your custom style properties seamlessly without breaking the margin tab tracks.
+        .TablesOfContents.Format = wdTOCNormal
+    End With
+    
+    ' Re-enable system workspace rendering
+    Application.ScreenUpdating = True
+    
+    ' Completion message deactivated per request
+    ' MsgBox "Custom Table of Contents generated successfully!", vbInformation, "TOC Complete"
+End Sub
+
