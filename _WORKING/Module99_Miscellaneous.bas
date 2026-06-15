@@ -342,3 +342,49 @@ Sub Trim_Multiple_Spaces_In_Selection()
            vbInformation, "Process Complete"
 End Sub
 
+Sub Correct_Selected_Paragraph_Indents()
+    ' ============================================================================
+    ' MODULE:       Correct_Selected_Paragraph_Indents
+    ' DESCRIPTION:  Resets left, right, and first-line/hanging indents to 0
+    '               for selected paragraphs, explicitly skipping active lists.
+    ' AUTHOR:       VBA Automation Suite
+    ' ============================================================================
+    
+    Dim para As Paragraph
+    
+    ' Establish a global error handler to gracefully manage unexpected layout blocks
+    On Error GoTo CleanUp
+    
+    ' Performance Optimization: Freeze visual layout rendering to maximize speed
+    Application.ScreenUpdating = False
+    
+    ' Loop exclusively through the paragraphs actively highlighted on screen
+    For Each para In Selection.Paragraphs
+        
+        ' Core Guardrail: Evaluate the paragraph's list layout metadata
+        ' wdListNoNumbering represents plain, standard body text layers
+        If para.Range.ListFormat.ListType = wdListNoNumbering Then
+            
+            ' Reset indentation metrics directly on the paragraph's top-level interface
+            para.LeftIndent = 0
+            para.RightIndent = 0
+            para.FirstLineIndent = 0
+            
+        End If
+        
+    Next para
+
+CleanUp:
+    ' Essential Safety Pass: Forcefully restore screen updates under all conditions
+    Application.ScreenUpdating = True
+    
+    ' Final Execution Report Badging
+    If Err.Number = 0 Then
+        MsgBox "Indentation successfully cleared for all selected non-list paragraphs!", _
+               vbInformation, "Format Clean Complete"
+    Else
+        MsgBox "The layout engine encountered an error: " & Err.Description, _
+               vbCritical, "Execution Failure"
+    End If
+End Sub
+
