@@ -479,6 +479,11 @@ Sub Style_4_Adjust_Styles()
             
         End With
         With .ParagraphFormat
+            .LineUnitBefore = 0
+            .LineUnitAfter = 0
+            .FirstLineIndent = InchesToPoints(0)
+            .LeftIndent = InchesToPoints(0)
+            .RightIndent = InchesToPoints(0)
             .SpaceBeforeAuto = False
             .SpaceAfterAuto = False
             .SpaceBefore = 6
