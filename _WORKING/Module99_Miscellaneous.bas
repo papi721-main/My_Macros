@@ -397,7 +397,8 @@ Sub Fix_Table_Row_Cell_Padding()
             ' Force paragraph spacing limits inside the grid to stay tight
             .Range.ParagraphFormat.SpaceBefore = 0
             .Range.ParagraphFormat.SpaceAfter = 0
-            .Range.ParagraphFormat.LineSpacingRule = wdLineSpaceSingle
+            .Range.ParagraphFormat.LineSpacingRule = wdLineSpaceMultiple
+            .Range.ParagraphFormat.LineSpacing = LinesToPoints(1.15)
             
             ' Strip out the invisible cell padding limits
             .TopPadding = InchesToPoints(0)
