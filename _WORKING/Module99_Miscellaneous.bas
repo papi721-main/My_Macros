@@ -598,18 +598,18 @@ End Sub
 
 Sub Misc_8_Trim_Global_Table_Paragraph_Marks()
     ' =========================================================================
-    ' MODULE NAME:  Misc_8_Trim_Global_Table_Cell_Paragraph_Marks
+    ' MODULE NAME:  Misc_8_Trim_Global_Table_Paragraph_Marks
     ' PURPOSE:      Scans every table globally across the active document to identify
     '               and forcefully strip out manually inserted empty paragraph breaks
     '               (vbCr / ¶) hanging at the absolute top and bottom of table cells.
     ' SCOPE:        All document layers containing structured data grid tables.
     ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Targets the ActiveDocument.Tables collection directly to bypass
-    '               the cursor Selection object, optimizing background rendering speed.
+    ' PERFORMANCE:  Targets the ActiveDocument.Tables collection directly and utilizes
+    '               a flat .Range.Cells loop pass to guarantee absolute immunity against
+    '               vertically or horizontally merged layout structures.
     ' =========================================================================
     
     Dim tbl As Table
-    Dim rowIdx As Row
     Dim cel As Cell
     Dim pga As Paragraph
     Dim pgaCount As Long
@@ -618,132 +618,21 @@ Sub Misc_8_Trim_Global_Table_Paragraph_Marks()
     ' Disable screen re-pagination routines to maximize background layout processing speed
     Application.ScreenUpdating = False
     
-    ' Globally trap unexpected errors (like split/merged cell index range errors)
+    ' Globally trap unexpected errors (safeguards system environment state)
     On Error GoTo ErrorHandler
     
     ' Iterate sequentially through every table asset residing in the document
     For Each tbl In ActiveDocument.Tables
         
-        ' Safely traverse row-by-row through the target table grid layout
-        For Each rowIdx In tbl.Rows
-            
-            ' Traverse cell-by-cell across the active row matrix
-            For Each cel In rowIdx.Cells
-                
-                ' -------------------------------------------------------------
-                ' PHASE 1: CLEANING LEADING EMPTY PARAGRAPHS (TOP OF CELL)
-                ' -------------------------------------------------------------
-                ' Continue evaluating the absolute first paragraph of the cell as long
-                ' as there is more than 1 paragraph total in the cell.
-                Do While cel.Range.Paragraphs.Count > 1
-                    Set pga = cel.Range.Paragraphs(1)
-                    
-                    ' If the length of the first paragraph text is exactly 1,
-                    ' it means the paragraph contains nothing but the invisible carriage return (¶).
-                    If Len(pga.Range.Text) = 1 Then
-                        pga.Range.Delete
-                    Else
-                        ' Exit the Do-Loop immediately the moment a text string is encountered
-                        Exit Do
-                    End If
-                Loop
-                
-                ' -------------------------------------------------------------
-                ' PHASE 2: CLEANING TRAILING EMPTY PARAGRAPHS (BOTTOM OF CELL)
-                ' -------------------------------------------------------------
-                ' Recalculate total paragraphs left inside this specific cell framework
-                pgaCount = cel.Range.Paragraphs.Count
-                
-                ' If the cell only has 1 line left, skip to protect the baseline grid marker
-                If pgaCount > 1 Then
-                    
-                    ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph 
-                    ' down to the first text line. We completely ignore the absolute final paragraph 
-                    ' item index (pgaCount) because Word hitches its vital, un-deletable cell-end marker 
-                    ' token directly to that slot. Deleting text around it from the bottom up avoids crashes.
-                    For i = (pgaCount - 1) To 1 Step -1
-                        Set pga = cel.Range.Paragraphs(i)
-                        
-                        ' Verify if this middle/trailing paragraph is a hollow line placeholder
-                        If Len(pga.Range.Text) = 1 Then
-                            pga.Range.Delete
-                        Else
-                            ' The moment valid textual content or data vectors are struck,
-                            ' stop the backward sweep to prevent erasing interior content line breaks.
-                            Exit For
-                        End If
-                    Next i
-                    
-                End If
-                
-            Next cel
-        Next rowIdx
-        
-    Next tbl
-
-CleanUp:
-    ' Re-enable native application rendering to display the finalized tight layouts
-    Application.ScreenUpdating = True
-    MsgBox "All loose, empty paragraph breaks have been successfully trimmed from your tables!", _
-           vbInformation, "Table Trim Complete"
-    Exit Sub
-
-ErrorHandler:
-    ' Structural Fallback: Ensure the display engine is unfrozen if an un-deletable cell boundary breaks
-    Application.ScreenUpdating = True
-    MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
-           vbCritical, "Execution Fault"
-End Sub
-
-Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
-    ' =========================================================================
-    ' MODULE NAME:  Misc_9_Trim_Selected_Table_Paragraph_Marks
-    ' PURPOSE:      Scans the user's actively selected table to identify and
-    '               forcefully strip out manually inserted empty paragraph breaks
-    '               (vbCr / ¶) hanging at the absolute top and bottom of cells.
-    ' SCOPE:        Active user-selected table ONLY. Leaves the rest of the 
-    '               document and other unselected tables completely untouched.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Isolates execution to the Selection framework, maximizing 
-    '               background processing speed and preventing screen flicker.
-    ' =========================================================================
-    
-    Dim tbl As Table
-    Dim rowIdx As Row
-    Dim cel As Cell
-    Dim pga As Paragraph
-    Dim pgaCount As Long
-    Dim i As Long
-    
-    ' -----------------------------------------------------------------
-    ' GUARDRAIL PHASE: SELECTION VALIDATION
-    ' -----------------------------------------------------------------
-    ' Before attempting to pull table properties, we must verify if the cursor 
-    ' is actually inside a table layout block. Checking wdWithInTable prevents 
-    ' the macro from crashing if executed over regular body paragraphs.
-    If Not Selection.Information(wdWithInTable) Then
-        MsgBox "Please click inside or select the specific table you want to clean first.", _
-               vbExclamation, "No Table Selected"
-        Exit Sub
-    End If
-    
-    ' Bind our table variable pointer to the first table object inside the active selection range
-    Set tbl = Selection.Tables(1)
-    
-    ' Disable screen updating to freeze visual repagination routines for raw execution speed
-    Application.ScreenUpdating = False
-    
-    ' Globally trap unexpected errors (such as structural collisions in complex split/merged cells)
-    On Error GoTo ErrorHandler
-    
-    ' -----------------------------------------------------------------
-    ' DATA GRID PROCESSING ENGINE
-    ' -----------------------------------------------------------------
-    ' Safely traverse row-by-row through the user's targeted table layout matrix 
-    For Each rowIdx In tbl.Rows
-        
-        ' Traverse cell-by-cell across the active row framework 
-        For Each cel In rowIdx.Cells
+        ' -----------------------------------------------------------------
+        ' DATA GRID PROCESSING ENGINE (COMPILE-SAFE & MERGED-CELL SAFE)
+        ' -----------------------------------------------------------------
+        ' ARCHITECTURAL FIX: Calling tbl.Cells throws a compile error because the Table 
+        ' object lacks a direct cells member. To target the flat, linear array of cells, 
+        ' we must explicitly route through tbl.Range.Cells. This completely bypasses 
+        ' row-by-row coordinate grids, ensuring full stability even if your document 
+        ' contains complex split or vertically merged table elements.
+        For Each cel In tbl.Range.Cells
             
             ' -------------------------------------------------------------
             ' PHASE 1: CLEANING LEADING EMPTY PARAGRAPHS (TOP OF CELL)
@@ -757,7 +646,7 @@ Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
                 If Len(pga.Range.Text) = 1 Then
                     pga.Range.Delete
                 Else
-                    ' Exit the loop immediately the moment a valid textual character asset is struck 
+                    ' Exit the loop immediately the moment a valid textual character asset is struck
                     Exit Do
                 End If
             Loop
@@ -791,7 +680,115 @@ Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
             End If
             
         Next cel
-    Next rowIdx
+        
+    Next tbl
+
+CleanUp:
+    ' Re-enable native application rendering to display the finalized tight layouts
+    Application.ScreenUpdating = True
+    MsgBox "All loose, empty paragraph breaks have been successfully trimmed from your tables!", _
+           vbInformation, "Table Trim Complete"
+    Exit Sub
+
+ErrorHandler:
+    ' Structural Fallback: Ensure the display engine is unfrozen if an un-deletable cell boundary breaks
+    Application.ScreenUpdating = True
+    MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
+           vbCritical, "Execution Fault"
+End Sub
+
+Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
+    ' =========================================================================
+    ' MODULE NAME:  Misc_9_Trim_Selected_Table_Paragraph_Marks
+    ' PURPOSE:      Scans the user's actively selected table cells to identify and
+    '               forcefully strip out manually inserted empty paragraph breaks
+    '               (vbCr / ¶) hanging at the absolute top and bottom of cells.
+    ' SCOPE:        Active user-selected cells/table ONLY. Leaves the rest of the 
+    '               document and other unselected tables completely untouched.
+    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+    ' PERFORMANCE:  Isolates execution to Selection.Range.Cells to completely bypass
+    '               VBE "Member not found" limits while remaining 100% immune 
+    '               to vertically or horizontally merged table layouts.
+    ' =========================================================================
+    
+    Dim cel As Cell
+    Dim pga As Paragraph
+    Dim pgaCount As Long
+    Dim i As Long
+    
+    ' -----------------------------------------------------------------
+    ' GUARDRAIL PHASE: SELECTION VALIDATION
+    ' -----------------------------------------------------------------
+    ' Before attempting to pull table properties, we must verify if the cursor 
+    ' is actually inside a table layout block. Checking wdWithInTable prevents 
+    ' the macro from crashing if executed over regular body paragraphs.
+    If Not Selection.Information(wdWithInTable) Then
+        MsgBox "Please click inside or select the specific table you want to clean first.", _
+               vbExclamation, "No Table Selected"
+        Exit Sub
+    End If
+    
+    ' Disable screen updating to freeze visual repagination routines for raw execution speed
+    Application.ScreenUpdating = False
+    
+    ' Globally trap unexpected errors (safeguards system environment state)
+    On Error GoTo ErrorHandler
+    
+    ' -----------------------------------------------------------------
+    ' DATA GRID PROCESSING ENGINE (COMPILE-SAFE & MERGED-CELL SAFE)
+    ' -----------------------------------------------------------------
+    ' ARCHITECTURAL FIX: Selection.Cells throws a compile error. To target the flat, 
+    ' linear array of highlighted cells cleanly, we look through Selection.Range.Cells.
+    ' This bypasses row-by-row coordinate grids completely, ensuring full stability 
+    ' even if your selected grid contains complex split or vertically merged items.
+    For Each cel In Selection.Range.Cells
+        
+        ' -------------------------------------------------------------
+        ' PHASE 1: CLEANING LEADING EMPTY PARAGRAPHS (TOP OF CELL)
+        ' -------------------------------------------------------------
+        ' Continue evaluating the absolute first paragraph of the cell as long
+        ' as there is more than 1 paragraph total inside the cell.
+        Do While cel.Range.Paragraphs.Count > 1
+            Set pga = cel.Range.Paragraphs(1)
+            
+            ' If the text string length is exactly 1, it holds nothing but an empty carriage return (¶).
+            If Len(pga.Range.Text) = 1 Then
+                pga.Range.Delete
+            Else
+                ' Exit the loop immediately the moment a valid textual character asset is struck
+                Exit Do
+            End If
+        Loop
+        
+        ' -------------------------------------------------------------
+        ' PHASE 2: CLEANING TRAILING EMPTY PARAGRAPHS (BOTTOM OF CELL)
+        ' -------------------------------------------------------------
+        ' Recalculate total paragraphs left inside this specific cell framework
+        pgaCount = cel.Range.Paragraphs.Count
+        
+        ' If the cell only has 1 line left, skip to protect the baseline grid cell marker
+        If pgaCount > 1 Then
+            
+            ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph.
+            ' We completely ignore the absolute final index slot because Word links its structural, 
+            ' un-deletable cell-end marker token to that position. Deleting from the bottom 
+            ' up prevents runtime layout corruption.
+            For i = (pgaCount - 1) To 1 Step -1
+                Set pga = cel.Range.Paragraphs(i)
+                
+                ' Verify if this trailing paragraph is a hollow whitespace line placeholder
+                If Len(pga.Range.Text) = 1 Then
+                    pga.Range.Delete
+                Else
+                    ' The moment legitimate content is encountered, freeze the reverse sweep.
+                    ' This preserves intentional formatting line breaks between interior text blocks.
+                    Exit For
+                End If
+            Next i
+            
+        End If
+        
+    Next cel
 
 CleanUp:
     ' Re-enable visual rendering to instantly present the newly tightened layout boundaries
