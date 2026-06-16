@@ -595,3 +595,102 @@ Sub Misc_7_Fix_Table_Row_Cell_Padding()
     ' Signal execution completion to the operator
     MsgBox "Table cell padding cleared successfully!", vbInformation, "Layout Fixed"
 End Sub
+
+Sub Misc_8_Trim_Table_Cell_Paragraph_Marks()
+    ' =========================================================================
+    ' MODULE NAME:  Misc_8_Trim_Table_Cell_Paragraph_Marks
+    ' PURPOSE:      Scans every table globally across the active document to identify
+    '               and forcefully strip out manually inserted empty paragraph breaks
+    '               (vbCr / ¶) hanging at the absolute top and bottom of table cells.
+    ' SCOPE:        All document layers containing structured data grid tables.
+    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+    ' PERFORMANCE:  Targets the ActiveDocument.Tables collection directly to bypass
+    '               the cursor Selection object, optimizing background rendering speed.
+    ' =========================================================================
+    
+    Dim tbl As Table
+    Dim rowIdx As Row
+    Dim cel As Cell
+    Dim pga As Paragraph
+    Dim pgaCount As Long
+    Dim i As Long
+    
+    ' Disable screen re-pagination routines to maximize background layout processing speed
+    Application.ScreenUpdating = False
+    
+    ' Globally trap unexpected errors (like split/merged cell index range errors)
+    On Error GoTo ErrorHandler
+    
+    ' Iterate sequentially through every table asset residing in the document
+    For Each tbl In ActiveDocument.Tables
+        
+        ' Safely traverse row-by-row through the target table grid layout
+        For Each rowIdx In tbl.Rows
+            
+            ' Traverse cell-by-cell across the active row matrix
+            For Each cel In rowIdx.Cells
+                
+                ' -------------------------------------------------------------
+                ' PHASE 1: CLEANING LEADING EMPTY PARAGRAPHS (TOP OF CELL)
+                ' -------------------------------------------------------------
+                ' Continue evaluating the absolute first paragraph of the cell as long
+                ' as there is more than 1 paragraph total in the cell.
+                Do While cel.Range.Paragraphs.Count > 1
+                    Set pga = cel.Range.Paragraphs(1)
+                    
+                    ' If the length of the first paragraph text is exactly 1,
+                    ' it means the paragraph contains nothing but the invisible carriage return (¶).
+                    If Len(pga.Range.Text) = 1 Then
+                        pga.Range.Delete
+                    Else
+                        ' Exit the Do-Loop immediately the moment a text string is encountered
+                        Exit Do
+                    End If
+                Loop
+                
+                ' -------------------------------------------------------------
+                ' PHASE 2: CLEANING TRAILING EMPTY PARAGRAPHS (BOTTOM OF CELL)
+                ' -------------------------------------------------------------
+                ' Recalculate total paragraphs left inside this specific cell framework
+                pgaCount = cel.Range.Paragraphs.Count
+                
+                ' If the cell only has 1 line left, skip to protect the baseline grid marker
+                If pgaCount > 1 Then
+                    
+                    ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph 
+                    ' down to the first text line. We completely ignore the absolute final paragraph 
+                    ' item index (pgaCount) because Word hitches its vital, un-deletable cell-end marker 
+                    ' token directly to that slot. Deleting text around it from the bottom up avoids crashes.
+                    For i = (pgaCount - 1) To 1 Step -1
+                        Set pga = cel.Range.Paragraphs(i)
+                        
+                        ' Verify if this middle/trailing paragraph is a hollow line placeholder
+                        If Len(pga.Range.Text) = 1 Then
+                            pga.Range.Delete
+                        Else
+                            ' The moment valid textual content or data vectors are struck,
+                            ' stop the backward sweep to prevent erasing interior content line breaks.
+                            Exit For
+                        End If
+                    Next i
+                    
+                End If
+                
+            Next cel
+        Next rowIdx
+        
+    Next tbl
+
+CleanUp:
+    ' Re-enable native application rendering to display the finalized tight layouts
+    Application.ScreenUpdating = True
+    MsgBox "All loose, empty paragraph breaks have been successfully trimmed from your tables!", _
+           vbInformation, "Table Trim Complete"
+    Exit Sub
+
+ErrorHandler:
+    ' Structural Fallback: Ensure the display engine is unfrozen if an un-deletable cell boundary breaks
+    Application.ScreenUpdating = True
+    MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
+           vbCritical, "Execution Fault"
+End Sub
