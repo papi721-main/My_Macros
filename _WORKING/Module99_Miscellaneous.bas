@@ -388,3 +388,28 @@ CleanUp:
     End If
 End Sub
 
+Sub Fix_Table_Row_Cell_Padding()
+    Dim tbl As Table
+    
+    ' Loop through every table asset globally in the document
+    For Each tbl In ActiveDocument.Tables
+        With tbl
+            ' Force paragraph spacing limits inside the grid to stay tight
+            .Range.ParagraphFormat.SpaceBefore = 0
+            .Range.ParagraphFormat.SpaceAfter = 0
+            .Range.ParagraphFormat.LineSpacingRule = wdLineSpaceSingle
+            
+            ' Strip out the invisible cell padding limits
+            .TopPadding = InchesToPoints(0)
+            .BottomPadding = InchesToPoints(0)
+            .LeftPadding = InchesToPoints(0.05)
+            .RightPadding = InchesToPoints(0.05)
+            
+            ' Allow rows to naturally auto-fit the font height tightly
+            .Rows.HeightRule = wdRowHeightAuto
+            .Rows.Height = 0
+        End With
+    Next tbl
+    
+    MsgBox "Table cell padding cleared successfully!", vbInformation, "Layout Fixed"
+End Sub
