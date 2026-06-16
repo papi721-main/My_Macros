@@ -263,7 +263,10 @@ Sub Lists_3_Reset_List_Numbering_Fonts()
         
         ' Scan all 9 possible list sub-levels in the template
         For Each lev In templ.ListLevels
-            
+
+            ' Set the color back to Auto for all lists
+            lev.Font.ColorIndex = wdAuto
+
             ' CRITICAL CHECK: Ignore levels configured with graphic bullet markers.
             ' Resetting a bullet level strips character font mapping, corrupting icons into square boxes.
             If lev.NumberStyle <> wdListNumberStyleBullet Then
