@@ -694,3 +694,115 @@ ErrorHandler:
     MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
            vbCritical, "Execution Fault"
 End Sub
+
+Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
+    ' =========================================================================
+    ' MODULE NAME:  Misc_9_Trim_Selected_Table_Paragraph_Marks
+    ' PURPOSE:      Scans the user's actively selected table to identify and
+    '               forcefully strip out manually inserted empty paragraph breaks
+    '               (vbCr / ¶) hanging at the absolute top and bottom of cells.
+    ' SCOPE:        Active user-selected table ONLY. Leaves the rest of the 
+    '               document and other unselected tables completely untouched.
+    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+    ' PERFORMANCE:  Isolates execution to the Selection framework, maximizing 
+    '               background processing speed and preventing screen flicker.
+    ' =========================================================================
+    
+    Dim tbl As Table
+    Dim rowIdx As Row
+    Dim cel As Cell
+    Dim pga As Paragraph
+    Dim pgaCount As Long
+    Dim i As Long
+    
+    ' -----------------------------------------------------------------
+    ' GUARDRAIL PHASE: SELECTION VALIDATION
+    ' -----------------------------------------------------------------
+    ' Before attempting to pull table properties, we must verify if the cursor 
+    ' is actually inside a table layout block. Checking wdWithInTable prevents 
+    ' the macro from crashing if executed over regular body paragraphs.
+    If Not Selection.Information(wdWithInTable) Then
+        MsgBox "Please click inside or select the specific table you want to clean first.", _
+               vbExclamation, "No Table Selected"
+        Exit Sub
+    End If
+    
+    ' Bind our table variable pointer to the first table object inside the active selection range
+    Set tbl = Selection.Tables(1)
+    
+    ' Disable screen updating to freeze visual repagination routines for raw execution speed
+    Application.ScreenUpdating = False
+    
+    ' Globally trap unexpected errors (such as structural collisions in complex split/merged cells)
+    On Error GoTo ErrorHandler
+    
+    ' -----------------------------------------------------------------
+    ' DATA GRID PROCESSING ENGINE
+    ' -----------------------------------------------------------------
+    ' Safely traverse row-by-row through the user's targeted table layout matrix 
+    For Each rowIdx In tbl.Rows
+        
+        ' Traverse cell-by-cell across the active row framework 
+        For Each cel In rowIdx.Cells
+            
+            ' -------------------------------------------------------------
+            ' PHASE 1: CLEANING LEADING EMPTY PARAGRAPHS (TOP OF CELL)
+            ' -------------------------------------------------------------
+            ' Continue evaluating the absolute first paragraph of the cell as long
+            ' as there is more than 1 paragraph total inside the cell.
+            Do While cel.Range.Paragraphs.Count > 1
+                Set pga = cel.Range.Paragraphs(1)
+                
+                ' If the text string length is exactly 1, it holds nothing but an empty carriage return (¶)[cite: 1230].
+                If Len(pga.Range.Text) = 1 Then
+                    pga.Range.Delete
+                Else
+                    ' Exit the loop immediately the moment a valid textual character asset is struck [cite: 1240]
+                    Exit Do
+                End If
+            Loop
+            
+            ' -------------------------------------------------------------
+            ' PHASE 2: CLEANING TRAILING EMPTY PARAGRAPHS (BOTTOM OF CELL)
+            ' -------------------------------------------------------------
+            ' Recalculate total paragraphs left inside this specific cell framework
+            pgaCount = cel.Range.Paragraphs.Count
+            
+            ' If the cell only has 1 line left, skip to protect the baseline grid cell marker
+            If pgaCount > 1 Then
+                
+                ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph[cite: 1238].
+                ' We completely ignore the absolute final index slot because Word links its structural, 
+                ' un-deletable cell-end marker token to that position[cite: 1233, 1234]. Deleting from the bottom 
+                ' up prevents runtime layout corruption[cite: 1234, 1238].
+                For i = (pgaCount - 1) To 1 Step -1
+                    Set pga = cel.Range.Paragraphs(i)
+                    
+                    ' Verify if this trailing paragraph is a hollow whitespace line placeholder
+                    If Len(pga.Range.Text) = 1 Then
+                        pga.Range.Delete
+                    Else
+                        ' The moment legitimate content is encountered, freeze the reverse sweep[cite: 1240].
+                        ' This preserves intentional formatting line breaks between interior text blocks[cite: 1239, 1240].
+                        Exit For
+                    End If
+                Next i
+                
+            End If
+            
+        Next cel
+    Next rowIdx
+
+CleanUp:
+    ' Re-enable visual rendering to instantly present the newly tightened layout boundaries
+    Application.ScreenUpdating = True
+    MsgBox "Loose paragraph marks successfully trimmed from the selected table!", _
+           vbInformation, "Selection Trim Complete"
+    Exit Sub
+
+ErrorHandler:
+    ' Structural Fallback: Safely unfreeze the user workspace if an operation breaks down
+    Application.ScreenUpdating = True
+    MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
+           vbCritical, "Execution Fault"
+End Sub
