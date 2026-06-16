@@ -16,22 +16,22 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
     
     ' Disable screen updates to freeze visual page re-pagination.
     ' This suppresses application stuttering and drastically increases 
-    ' background processing speed on long, multi-section documents[cite: 847, 848].
+    ' background processing speed on long, multi-section documents.
     Application.ScreenUpdating = False
     
     ' =========================================================================
     ' PASS 1: THE GLOBAL SWEEP (Catches Main Text, Tables, and Footnotes)
     ' =========================================================================
     ' This loop scans the background StoryRanges collection. It is the most 
-    ' efficient way to bypass cursor selection and hit major text blocks[cite: 5, 17].
+    ' efficient way to bypass cursor selection and hit major text blocks.
     For Each story In doc.StoryRanges
         Do
             ' Set the highlight index directly to wdNoHighlight.
-            ' This strips the background formatting layer without touching the text text[cite: 4].
+            ' This strips the background formatting layer without touching the text text.
             story.HighlightColorIndex = wdNoHighlight
             
             ' Word chunks text into sub-ranges (e.g., linked text boxes or split footnotes).
-            ' NextStoryRange ensures the pointer evaluates downstream links in this story[cite: 5].
+            ' NextStoryRange ensures the pointer evaluates downstream links in this story.
             Set story = story.NextStoryRange
         Loop Until story Is Nothing
     For Each story In doc.StoryRanges
@@ -40,11 +40,11 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
     ' PASS 2: DEEP SECTION PENETRATION (Forces dormant headers/footers awake)
     ' =========================================================================
     ' ARCHITECTURAL CULPRIT: Word does not automatically load every header and 
-    ' footer layer into memory unless they are actively visible or opened by the user[cite: 26].
+    ' footer layer into memory unless they are actively visible or opened by the user.
     ' If "Different First Page" or "Different Odd & Even Pages" layout flags are enabled, 
-    ' unlinked header/footer canvases remain completely dormant in the background cache[cite: 27].
-    ' Because Pass 1 loops right past dormant stories[cite: 28], Pass 2 explicitly declares a 
-    ' nested section loop to force the layout processor to evaluate all layout sub-layers[cite: 29, 31].
+    ' unlinked header/footer canvases remain completely dormant in the background cache.
+    ' Because Pass 1 loops right past dormant stories, Pass 2 explicitly declares a 
+    ' nested section loop to force the layout processor to evaluate all layout sub-layers.
     For Each sec In doc.Sections
         
         ' -----------------------------------------------------------------
@@ -53,7 +53,7 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
         ' Step through the section's Header collection (First Page, Even Pages, Primary).
         For Each compView In sec.Headers
             ' The .Exists safety gate prevents Word from throwing a runtime error
-            ' if the sub-layer is structurally unassigned or inactive[cite: 34].
+            ' if the sub-layer is structurally unassigned or inactive.
             If compView.Exists Then
                 ' Route through the sub-layer's .Range to expose its underlying text canvas.
                 compView.Range.HighlightColorIndex = wdNoHighlight
@@ -73,7 +73,7 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
         
     Next sec
     
-    ' Re-enable screen rendering to display the finalized layout updates [cite: 1376]
+    ' Re-enable screen rendering to display the finalized layout updates 
     Application.ScreenUpdating = True
     
     ' Signal execution completion to the operator
@@ -753,11 +753,11 @@ Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
             Do While cel.Range.Paragraphs.Count > 1
                 Set pga = cel.Range.Paragraphs(1)
                 
-                ' If the text string length is exactly 1, it holds nothing but an empty carriage return (¶)[cite: 1230].
+                ' If the text string length is exactly 1, it holds nothing but an empty carriage return (¶).
                 If Len(pga.Range.Text) = 1 Then
                     pga.Range.Delete
                 Else
-                    ' Exit the loop immediately the moment a valid textual character asset is struck [cite: 1240]
+                    ' Exit the loop immediately the moment a valid textual character asset is struck 
                     Exit Do
                 End If
             Loop
@@ -771,10 +771,10 @@ Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
             ' If the cell only has 1 line left, skip to protect the baseline grid cell marker
             If pgaCount > 1 Then
                 
-                ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph[cite: 1238].
+                ' ARCHITECTURAL STRATEGY: Loop BACKWARDS from the second-to-last paragraph.
                 ' We completely ignore the absolute final index slot because Word links its structural, 
-                ' un-deletable cell-end marker token to that position[cite: 1233, 1234]. Deleting from the bottom 
-                ' up prevents runtime layout corruption[cite: 1234, 1238].
+                ' un-deletable cell-end marker token to that position. Deleting from the bottom 
+                ' up prevents runtime layout corruption.
                 For i = (pgaCount - 1) To 1 Step -1
                     Set pga = cel.Range.Paragraphs(i)
                     
@@ -782,8 +782,8 @@ Sub Misc_9_Trim_Selected_Table_Paragraph_Marks()
                     If Len(pga.Range.Text) = 1 Then
                         pga.Range.Delete
                     Else
-                        ' The moment legitimate content is encountered, freeze the reverse sweep[cite: 1240].
-                        ' This preserves intentional formatting line breaks between interior text blocks[cite: 1239, 1240].
+                        ' The moment legitimate content is encountered, freeze the reverse sweep.
+                        ' This preserves intentional formatting line breaks between interior text blocks.
                         Exit For
                     End If
                 Next i
@@ -805,4 +805,153 @@ ErrorHandler:
     Application.ScreenUpdating = True
     MsgBox "An unexpected layout error occurred during cell trimming: " & Err.Description, _
            vbCritical, "Execution Fault"
+End Sub
+
+Sub Misc_10_Purge_Ghost_TOC_Levels()
+    ' =========================================================================
+    ' MODULE NAME:  Misc_10_Purge_Ghost_TOC_Levels
+    ' PURPOSE:      Identifies and fixes "Fake Headings" or Outline Level Corruption
+    '               where a blank line or a standard paragraph (like Normal style)
+    '               possesses an explicit outline level tracking value. 
+    '               This prevents phantom blank rows, rogue numbering strings, and
+    '               empty dot leaders from penetrating your Table of Contents.
+    ' SCOPE:        All standard document body paragraphs. Explicitly ignores tables.
+    ' =========================================================================
+    
+    Dim para As Paragraph
+    Dim doc As Document
+    Set doc = ActiveDocument
+    
+    ' Freeze visual window rendering to stop Word from constantly attempting to
+    ' re-paginate the page layout layout line-by-line during the paragraph scans.
+    Application.ScreenUpdating = False
+    
+    ' -----------------------------------------------------------------
+    ' 1. THE LAYER INTERCEPTION SWEEP (Paragraph Traversal)
+    ' -----------------------------------------------------------------
+    ' Loop paragraph-by-paragraph through the active text story to catch hidden 
+    ' layout overrides stamped directly onto paragraph properties.
+    For Each para In doc.Paragraphs
+        
+        ' GRID ARCHITECTURE GUARDRAIL: Modifying text properties inside data tables 
+        ' can corrupt multi-tier alignments or break cell layout constraints.
+        ' Checking .Information(wdWithInTable) completely insulates table content cells.
+        If Not para.Range.Information(wdWithInTable) Then
+            
+            ' OUTLINE LEVEL OVERLAY TRAP: Word's TOC engine scrapes the document for
+            ' anything flagged with structural levels 1, 2, or 3.
+            ' This conditional locks onto paragraphs carrying those specific flags.
+            If para.OutlineLevel >= wdOutlineLevel1 And para.OutlineLevel <= wdOutlineLevel3 Then
+                
+                ' THE STYLE ASSIGNMENT VERIFICATION FILTER:
+                ' Real headings should be explicitly bound to Word's built-in Heading styles.
+                ' We use Left(..., 7) to evaluate the first 7 characters of the localized style name.
+                ' If it does NOT start with "Heading", it is a ghost element masquerading as a layout landmark.
+                If Left(para.Style.NameLocal, 7) <> "Heading" Then
+                    
+                    ' THE HARD DEMOTION RESET: Forcefully strip the rogue structural level property,
+                    ' pushing the paragraph back down to standard unranked text (wdOutlineLevelBodyText).
+                    ' This cleanly removes it from the Navigation Pane and your index hierarchy.
+                    para.OutlineLevel = wdOutlineLevelBodyText
+                    
+                End If
+            End If
+        End If
+    Next para
+    
+    ' -----------------------------------------------------------------
+    ' 2. PROGRAMMATIC FIELD CODE COMPILATION
+    ' -----------------------------------------------------------------
+    Dim toc As TableOfContents
+    
+    ' Iterate sequentially through every Table of Contents field block embedded in the file.
+    ' Instead of forcing a slow manual document selection pass, looping through the collection
+    ' targets the field engines directly behind the scenes.
+    For Each toc In doc.TablesOfContents
+        ' Force an immediate layout recalculation update on the active TOC.
+        ' This pulls the newly cleaned paragraph matrices into your index, ensuring those 
+        ' phantom empty lines and broken dot leaders instantly vanish from your layout page.
+        toc.Update
+    Next toc
+    
+    ' Re-enable visual application updates to present the finalized clean layout metrics
+    Application.ScreenUpdating = True
+    
+    ' Signal execution completion to the operator
+    MsgBox "Ghost TOC levels removed and table updated successfully!", vbInformation, "Layout Cleaned"
+End Sub
+
+Sub Misc_11_Reset_All_List_Style_Links()
+    ' =========================================================================
+    ' MODULE NAME:  Reset_All_List_Style_Links
+    ' PURPOSE:      Iterates through every list template initialized in the document's 
+    '               background cache and forcefully strips away any linked style anchors.
+    '               This breaks old or corrupted multi-level list linkages, preparing 
+    '               the template before clean master styles are reapplied.
+    ' SCOPE:        Global background document ListTemplates collection cache.
+    ' =========================================================================
+    
+    Dim lt As ListTemplate
+    Dim lvl As ListLevel
+    Dim doc As Document
+    Dim i As Integer
+    
+    Set doc = ActiveDocument
+    
+    ' Disable visual window updates to completely eliminate macro lag.
+    ' This prevents Word from attempting to visually redraw and re-paginate the 
+    ' workspace layout for every single list level processed behind the scenes.
+    Application.ScreenUpdating = False
+    
+    ' -----------------------------------------------------------------
+    ' CRITICAL CRASH PROTECTION SAFENET
+    ' -----------------------------------------------------------------
+    ' ARCHITECTURAL VULNERABILITY: ActiveDocument.ListTemplates frequently contains 
+    ' hidden, read-only system structures or corrupted artifact slots left behind 
+    ' by Word's tracking engine. When a loop hits one of these protected templates, 
+    ' reading or writing properties will throw a runtime error or lock the app.
+    ' Enforcing On Error Resume Next ensures the script skips locked rows or copy-paste 
+    ' artifacts smoothly instead of crashing.
+    On Error Resume Next
+    
+    ' -----------------------------------------------------------------
+    ' THE TEMPLATE DECOUPLING LOOP
+    ' -----------------------------------------------------------------
+    ' Loop sequentially through every list template definition stored in the document range
+    For Each lt In doc.ListTemplates
+        ' Deep-scan all 9 available levels in the native multi-level list hierarchy 
+        For i = 1 To 9
+            ' Bind our level tracking pointer variable
+            Set lvl = lt.ListLevels(i)
+            
+            ' THE DECOUPLING CRITERIA RESET:
+            ' Setting the .LinkedStyle property to a blank string ("") forcefully strips 
+            ' away any linked paragraph style mapping anchors. This ensures 
+            ' no rogue background formatting or fuzzy outline parameters continue to pollute 
+            ' the Navigation Pane or Table of Contents fields.
+            lvl.LinkedStyle = ""
+            
+        Next i
+    Next lt
+    
+    ' -----------------------------------------------------------------
+    ' INDEX RE-COMPILATION PHASE
+    ' -----------------------------------------------------------------
+    Dim toc As TableOfContents
+    
+    ' Loop sequentially through any Table of Contents fields embedded in the text layers.
+    ' Since decoupling list templates alters the structural metadata broadcast to the 
+    ' index engine, we must force a calculation check to update the table layouts immediately.
+    For Each toc In doc.TablesOfContents
+        ' Force an immediate layout update on the active TOC.
+        ' This pulls the newly cleaned paragraph matrices into your index, ensuring those 
+        ' phantom empty lines and broken dot leaders instantly vanish from your layout page.
+        toc.Update
+    Next toc
+    
+    ' Re-enable visual application updates to present the finalized clean layout metrics
+    Application.ScreenUpdating = True
+    
+    ' Signal execution completion to the operator
+    MsgBox "All list template style links have been successfully cleared!", vbInformation, "Links Reset"
 End Sub
