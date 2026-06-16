@@ -596,9 +596,9 @@ Sub Misc_7_Fix_Table_Row_Cell_Padding()
     MsgBox "Table cell padding cleared successfully!", vbInformation, "Layout Fixed"
 End Sub
 
-Sub Misc_8_Trim_Table_Cell_Paragraph_Marks()
+Sub Misc_8_Trim_Global_Table_Paragraph_Marks()
     ' =========================================================================
-    ' MODULE NAME:  Misc_8_Trim_Table_Cell_Paragraph_Marks
+    ' MODULE NAME:  Misc_8_Trim_Global_Table_Cell_Paragraph_Marks
     ' PURPOSE:      Scans every table globally across the active document to identify
     '               and forcefully strip out manually inserted empty paragraph breaks
     '               (vbCr / ¶) hanging at the absolute top and bottom of table cells.
