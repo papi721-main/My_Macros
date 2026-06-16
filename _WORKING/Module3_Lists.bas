@@ -392,3 +392,75 @@ Sub Lists_4_Fix_List_Spacing_Manually()
     
     MsgBox "Fixed and optimized list spacing successfully! Structural headings left untouched.", vbInformation, "Layout Complete"
 End Sub
+
+Sub Lists_5_Fix_Selected_List_Indents()
+    ' ============================================================================
+    ' MODULE:       Lists_5_Fix_Selected_List_Indents
+    ' DESCRIPTION:  Normalizes left indents and bullet positions for all active 
+    '               lists within a selection while strictly skipping headings.
+    '               Level 1: Bullet at 0.25", Text at 0.5"
+    '               Consecutive levels increment both by 0.25" per step.
+    ' AUTHOR:       VBA Automation Suite
+    ' ============================================================================
+    
+    Dim para As Paragraph
+    Dim listLvl As Integer
+    Dim targetBulletPos As Single
+    Dim targetTextPos As Single
+    
+    ' Establish global error handling to safeguard the document layout context
+    On Error GoTo CleanUp
+    
+    ' Performance Optimization: Freeze visual layout redrawing to maximize processing speed
+    Application.ScreenUpdating = False
+    
+    ' Loop exclusively through the paragraphs actively highlighted on screen 
+    For Each para In Selection.Paragraphs
+        
+        ' Guardrail 1: Skip structural headings by targeting outline level metadata 
+        If para.OutlineLevel = wdOutlineLevelBodyText Then
+            
+            ' Guardrail 2: Identify all bulleted, numbered, and multi-level lists 
+            If para.Range.ListFormat.ListType <> wdListNoNumbering Then
+                
+                ' Extract the exact 1-based structural depth index of the active list row 
+                listLvl = para.Range.ListFormat.ListLevelNumber
+                
+                ' Calculate precise layout geometry increments (0.25" steps per level)
+                ' Level 1: Bullet = 0.25", Text = 0.50"
+                ' Level 2: Bullet = 0.50", Text = 0.75"
+                ' Level 3: Bullet = 0.75", Text = 1.00"
+                targetBulletPos = 0.25 * listLvl
+                targetTextPos = 0.25 * (listLvl + 1)
+                
+                ' Apply properties to the paragraph layout engine
+                ' Word calculates indents using points, so we convert inches explicitly
+                para.LeftIndent = InchesToPoints(targetTextPos)
+                
+                ' FirstLineIndent creates a negative hanging indent window.
+                ' By calculating the negative offset between text position and bullet position,
+                ' the bullet snaps perfectly backward to its designated channel.
+                para.FirstLineIndent = InchesToPoints(targetBulletPos - targetTextPos)
+                
+                ' Reset right margin constraints to flush default
+                para.RightIndent = 0
+                
+            End If
+            
+        End If
+        
+    Next para
+
+CleanUp:
+    ' Restore visual layout rendering safely 
+    Application.ScreenUpdating = True 
+    
+    ' Execution Completion Notification
+    If Err.Number = 0 Then
+        MsgBox "List indents and alignment successfully adjusted to 0.25"" increments!", _
+               vbInformation, "Format Fix Complete"
+    Else
+        MsgBox "The layout engine encountered an error: " & Err.Description, _
+               vbCritical, "Execution Failure"
+    End If
+End Sub
