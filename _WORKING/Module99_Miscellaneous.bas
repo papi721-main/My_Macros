@@ -4,11 +4,7 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
     ' PURPOSE:      Completely clears all background text highlighting across every
     '               structural layer of the active document, including stubborn 
     '               unlinked headers/footers.
-    ' SCOPE:        Main document text, tables, headers, footers, textboxes, footnotes.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Employs a two-pass strategy combining background story loops
-    '               with explicit section audits. Uses ScreenUpdating control
-    '               to bypass the physical cursor, avoiding screen flicker.
+    ' SCOPE:        Main document text, tables, headers, footers, text boxes, footnotes.
     ' =========================================================================
     
     Dim doc As Document
@@ -89,13 +85,9 @@ Sub Misc_2_Highlight_Target_Words()
     ' =========================================================================
     ' MODULE NAME:  Misc_2_Highlight_Target_Words
     ' PURPOSE:      Searches the main body text layer for an array of target keywords
-    '               and applies a standardized green highlight overlay to them[cite: 4].
-    ' SCOPE:        Main text body and embedded tables ONLY[cite: 4, 8]. Excludes headers/footers[cite: 4, 8].
-    ' SETTINGS:     Case-insensitive match[cite: 13, 22]. Evaluates word fragments (e.g. finds "fig" inside "figure").
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Uses Word's native high-speed Find engine via background ranges[cite: 9, 17]. 
-    '               By isolating the scope to the main canvas, it targets tables 
-    '               seamlessly without needing intensive cell-by-cell loops.
+    '               and applies a standardized green highlight overlay to them.
+    ' SCOPE:        Main text body and embedded tables ONLY.
+    ' SETTINGS:     Case-insensitive match. Evaluates word fragments (e.g. finds "fig" inside "figure").
     ' =========================================================================
     
     Dim docRange As Range
@@ -103,31 +95,31 @@ Sub Misc_2_Highlight_Target_Words()
     Dim targetWord As Variant
     
     ' EXPLICIT CONFIGURATION: Define your target word list here
-    ' Expand this array as needed to scale the list dynamically over time[cite: 9, 45].
-    wordList = Array("tab", "fig", "annex", "plate") [cite: 3, 4]
+    ' Expand this array as needed to scale the list dynamically over time.
+    wordList = Array("tab", "fig", "annex", "plate") 
     
     ' Freeze visual application repagination to eliminate macro lag.
-    ' This suppresses display stuttering and drastically cuts processing overhead[cite: 65, 178].
-    Application.ScreenUpdating = False [cite: 61]
+    ' This suppresses display stuttering and drastically cuts processing overhead.
+    Application.ScreenUpdating = False 
     
     ' Establish the global highlight color index for the application session.
     ' This acts as the palette choice that the .Replacement engine will look to.
     Options.DefaultHighlightColorIndex = wdBrightGreen
     
-    ' Iterate sequentially through each keyword defined in the configuration array [cite: 9]
+    ' Iterate sequentially through each keyword defined in the configuration array 
     For Each targetWord In wordList
         
         ' -----------------------------------------------------------------
         ' SCOPE ISOLATION: TARGETING THE MAIN TEXT CANVAS
         ' -----------------------------------------------------------------
         ' ARCHITECTURAL STRATEGY: By pulling from ActiveDocument.Content instead of 
-        ' iterating all StoryRanges, the macro locks its execution context to the main text story[cite: 8, 12].
+        ' iterating all StoryRanges, the macro locks its execution context to the main text story.
         ' Under Word's object hierarchy, tables embedded in the document body are 
-        ' structurally part of the main text story[cite: 10, 21]. This allows the Find engine to 
-        ' penetate tables natively while keeping headers/footers entirely untouched[cite: 8, 12].
+        ' structurally part of the main text story. This allows the Find engine to 
+        ' penetate tables natively while keeping headers/footers entirely untouched.
         ' Note: The range object collapses as matches are found; it MUST be completely 
         ' re-instantiated on every word pass to reset boundaries from page 1 to the end.
-        Set docRange = ActiveDocument.Content [cite: 72]
+        Set docRange = ActiveDocument.Content 
         
         With docRange.Find
             ' Clear out any residual search, font, or replacement criteria hanging in memory 
@@ -140,31 +132,31 @@ Sub Misc_2_Highlight_Target_Words()
             
             ' CASE-INSENSITIVITY ENGINE RULES:
             ' Setting .MatchCase to False ensures Word catches variations like "fig", "Fig", 
-            ' "FIG", or "FiG" with identical precision across the range[cite: 13, 22].
-            .MatchCase = False [cite: 13, 22]
+            ' "FIG", or "FiG" with identical precision across the range.
+            .MatchCase = False 
             
             ' FRACTIONAL STRING PARSING OVERRIDES:
             ' Setting .MatchWholeWord to False allows the token engine to sweep up sub-strings.
             ' For example, searching for "fig" will successfully capture "figure" or "figures".
-            ' If you require exact, standalone matches only, toggle this parameter to True[cite: 40, 42].
+            ' If you require exact, standalone matches only, toggle this parameter to True.
             .MatchWholeWord = False
             
             ' BOUNDARY DEFENSE:
             ' Setting .Wrap to wdFindStop instructs the engine to process the specific range block 
             ' from top to bottom exactly once. This eliminates the risk of Word hitting the end of 
-            ' the document and wrapping back around into a continuous execution loop[cite: 405, 408].
-            .Wrap = wdFindStop [cite: 408]
+            ' the document and wrapping back around into a continuous execution loop.
+            .Wrap = wdFindStop 
             
             ' Format instruction telling the backend layout processor that any string sequence 
             ' intercepted by the lookup pattern must have an active highlight attribute stamped over it.
             .Replacement.Highlight = True
             
-            ' Fire the native Find engine to execute a global bulk replacement pass across the range[cite: 78].
-            .Execute Replace:=wdReplaceAll [cite: 78]
+            ' Fire the native Find engine to execute a global bulk replacement pass across the range.
+            .Execute Replace:=wdReplaceAll 
         End With
     Next targetWord
     
-    ' Re-enable screen rendering to display the finalized layout updates to the user [cite: 244]
+    ' Re-enable screen rendering to display the finalized layout updates to the user 
     Application.ScreenUpdating = True
     
     ' Signal execution completion to the operator
@@ -180,10 +172,6 @@ Sub Misc_3_Fix_Common_Misspellings()
     ' SCOPE:        Main body text, tables, headers, footers, textboxes, and footnotes.
     ' RULES:        Case-insensitive matching, but strictly enforces whole-word checks 
     '               to avoid accidentally corrupting longer, correctly spelled words.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Utilizes an in-memory Scripting.Dictionary mapped against a
-    '               two-tier background StoryRanges text traversal loop. This avoids 
-    '               physical cursor selection, eliminating screen flicker and macro lag.
     ' =========================================================================
     
     Dim doc As Document
@@ -252,9 +240,6 @@ Sub Misc_4_Trim_Headings()
     '               unwanted trailing periods, colons, or hyphens.
     ' SCOPE:        Document body paragraphs matching Heading styles (Levels 1 to 9).
     ' SAFETY:       Automatically protects tables and ignores generic body text layers.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Iterates paragraph-by-paragraph via background Range processing,
-    '               bypassing the cursor Selection to eliminate screen stuttering[cite: 1204].
     ' =========================================================================
     
     Dim doc As Document
@@ -267,35 +252,35 @@ Sub Misc_4_Trim_Headings()
     Set doc = ActiveDocument
     
     ' Disable application window rendering to completely freeze visual repagination.
-    ' This prevents massive background layout recalculation lag on large documents[cite: 129].
+    ' This prevents massive background layout recalculation lag on large documents.
     Application.ScreenUpdating = False
     
     ' Instantiate global runtime error trapping to protect the active workspace environment
     On Error GoTo ErrorHandler
 
-    ' Iterate sequentially through every paragraph entry in the core text story [cite: 1205]
+    ' Iterate sequentially through every paragraph entry in the core text story 
     For Each para In doc.Paragraphs
         
         ' -----------------------------------------------------------------
         ' GUARDRAIL PHASE: GRID ARCHITECTURE INSULATION
         ' -----------------------------------------------------------------
         ' ARCHITECTURAL STRATEGY: Modifying text strings that reside inside data tables 
-        ' can corrupt alignment matrices or cause unexpected cell overflow anomalies[cite: 99].
-        ' Checking .Information(wdWithInTable) isolates and bypasses tabular grids[cite: 98].
+        ' can corrupt alignment matrices or cause unexpected cell overflow anomalies.
+        ' Checking .Information(wdWithInTable) isolates and bypasses tabular grids.
         If Not para.Range.Information(wdWithInTable) Then
             
-            ' FILTER MECHANISM: Evaluate the structural metadata level of the paragraph[cite: 145].
+            ' FILTER MECHANISM: Evaluate the structural metadata level of the paragraph.
             ' This isolates built-in Headings (Levels 1 to 9) while ignoring standard 
-            ' unnumbered body text ranges (wdOutlineLevelBodyText)[cite: 146, 505].
+            ' unnumbered body text ranges (wdOutlineLevelBodyText).
             If para.OutlineLevel >= 1 And para.OutlineLevel <= 9 Then
                 
-                ' Bind a pointer to the individual paragraph text span range [cite: 1203]
+                ' Bind a pointer to the individual paragraph text span range 
                 Set txtRange = para.Range
                 paraText = txtRange.text
                 originalText = paraText
                 
                 ' STRING SANITIZATION NOTE: Word appends an internal carriage return character 
-                ' (vbCr / ¶) to mark the end of every structural paragraph[cite: 1205, 1243]. 
+                ' (vbCr / ¶) to mark the end of every structural paragraph. 
                 ' This must be peeled back temporarily to prevent string manipulation failures.
                 If Right(paraText, 1) = vbCr Then paraText = Left(paraText, Len(paraText) - 1)
                 
@@ -308,7 +293,7 @@ Sub Misc_4_Trim_Headings()
                 ' RATIONALE: Simple single-pass string operations fail if complex typos 
                 ' exist (e.g., a heading starting with multiple spaces, followed by a dot).
                 ' Wrapping character sweeps inside a Do...Loop instructs the engine to trim
-                ' from the outside in until no targeted characters remain[cite: 100, 101].
+                ' from the outside in until no targeted characters remain.
                 
                 ' 1. Leading Boundary Character Sweeper
                 Do
@@ -318,10 +303,10 @@ Sub Misc_4_Trim_Headings()
                     ' Clear default leading whitespace blocks
                     cleanText = Trim(cleanText)
                     
-                    ' Squeeze out legacy horizontal tab formatting markers (vbTab) [cite: 102]
+                    ' Squeeze out legacy horizontal tab formatting markers (vbTab) 
                     If Left(cleanText, 1) = vbTab Then cleanText = Mid(cleanText, 2)
                     
-                    ' Erase unmanaged leading punctuation sequences [cite: 102]
+                    ' Erase unmanaged leading punctuation sequences 
                     If Left(cleanText, 1) = "." Or Left(cleanText, 1) = "-" Then cleanText = Mid(cleanText, 2)
                     
                 Loop Until Len(cleanText) = initialLenAsLeading Or Len(cleanText) = 0
@@ -334,11 +319,11 @@ Sub Misc_4_Trim_Headings()
                     ' Clear default trailing whitespace blocks
                     cleanText = Trim(cleanText)
                     
-                    ' Squeeze out legacy trailing horizontal tab markers (vbTab) [cite: 103]
+                    ' Squeeze out legacy trailing horizontal tab markers (vbTab) 
                     If Right(cleanText, 1) = vbTab Then cleanText = Left(cleanText, Len(cleanText) - 1)
                     
                     ' Clear trailing periods, hyphens, and colons.
-                    ' Converts "10.5. Title." to "10.5. Title" to comply with publishing guidelines[cite: 103].
+                    ' Converts "10.5. Title." to "10.5. Title" to comply with publishing guidelines.
                     If Right(cleanText, 1) = "." Or Right(cleanText, 1) = "-" Or Right(cleanText, 1) = ":" Then
                         cleanText = Left(cleanText, Len(cleanText) - 1)
                     End If
@@ -354,8 +339,8 @@ Sub Misc_4_Trim_Headings()
                     
                     ' DIRECT FORMATTING OVERRIDE TRAP: Replacing a Range's text via VBA 
                     ' (`txtRange.text = ...`) causes Word to drop structural style metadata 
-                    ' or inherit random direct character formatting layer remnants[cite: 86, 104].
-                    ' We cache the active Style pointer object before performing the mutation[cite: 1248].
+                    ' or inherit random direct character formatting layer remnants.
+                    ' We cache the active Style pointer object before performing the mutation.
                     Dim currentStyle As Variant
                     Set currentStyle = txtRange.Style
                     
@@ -364,9 +349,9 @@ Sub Misc_4_Trim_Headings()
                     
                     ' RE-STAMP & HARD LAYOUT RESET: Re-assigning the original Style rule combined 
                     ' with `.Font.Reset` forcefully strips away any residual manual formatting 
-                    ' layer overrides and forces characters to instantly conform to your style sheet[cite: 87, 88].
+                    ' layer overrides and forces characters to instantly conform to your style sheet.
                     txtRange.Style = currentStyle
-                    txtRange.Font.Reset [cite: 1214]
+                    txtRange.Font.Reset 
                     
                 End If
                 
@@ -393,10 +378,6 @@ Sub Misc_5_Trim_Multiple_Spaces_In_Selection()
     '               the user's highlighted selection (paragraphs and tables) and
     '               collapses them down into a single standard space.
     ' SCOPE:        Active user selection ONLY. Leaves unhighlighted text completely intact.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Utilizes Word's native, high-speed Find and Replace engine mapped
-    '               against an in-memory Selection.Range[cite: 107]. Bypasses cell-by-cell loops 
-    '               for rapid execution within tables[cite: 116].
     ' =========================================================================
     
     Dim selectRange As Range
@@ -415,12 +396,12 @@ Sub Misc_5_Trim_Multiple_Spaces_In_Selection()
     End If
     
     ' Assign the precise boundary limits of your current visual selection to a 
-    ' background Range pointer[cite: 108]. This insulates the operational range 
+    ' background Range pointer. This insulates the operational range 
     ' from changes if the user accidentally clicks on the screen while the macro runs.
     Set selectRange = Selection.Range
     
-    ' Freeze visual application window rendering to completely eliminate macro lag[cite: 782].
-    ' This suppresses screen flickering and accelerates execution rates when sweeping heavy blocks[cite: 783].
+    ' Freeze visual application window rendering to completely eliminate macro lag.
+    ' This suppresses screen flickering and accelerates execution rates when sweeping heavy blocks.
     Application.ScreenUpdating = False
     
     ' -----------------------------------------------------------------
@@ -433,16 +414,16 @@ Sub Misc_5_Trim_Multiple_Spaces_In_Selection()
         .Replacement.ClearFormatting
         
         ' Configure targeted string tokens
-        .Text = "  "                 ' Target exactly two sequential spaces [cite: 109]
-        .Replacement.Text = " "      ' Replace with one single standard space [cite: 109]
+        .Text = "  "                 ' Target exactly two sequential spaces 
+        .Replacement.Text = " "      ' Replace with one single standard space 
         
         .Forward = True
         
         ' THE SELECTION DEFENSE BOUNDARY RULE:
         ' Changing this wrapper rule from default (wdFindContinue) to wdFindStop is the 
-        ' most critical guardrail in the script[cite: 110]. It explicitly commands the layout 
+        ' most critical guardrail in the script. It explicitly commands the layout 
         ' processor that the moment it hits the outer perimeter of your text selection, 
-        ' it must freeze execution[cite: 111]. This guarantees it never bleeds into the rest of the document[cite: 112].
+        ' it must freeze execution.
         .Wrap = wdFindStop
         
         ' Clear structural layout and matching variables to prioritize speed
@@ -458,16 +439,16 @@ Sub Misc_5_Trim_Multiple_Spaces_In_Selection()
         ' -------------------------------------------------------------
         ' EXPLANATION: If a user has mashed the spacebar five times ("     "), 
         ' a single standalone ReplaceAll execution pass only collapses it down to 
-        ' three spaces, and a second pass drops it to two[cite: 113].
+        ' three spaces, and a second pass drops it to two.
         ' Placing the .Execute method directly inside a rolling Do While loop forces 
         ' Word to continuously sweep through the range until it declares with absolute 
-        ' certainty that zero instances of double-spaces remain on the canvas[cite: 114].
+        ' certainty that zero instances of double-spaces remain on the canvas.
         '
         ' SEAMLESS TABLE ARCHIECTURE SUPPORT: 
         ' Because Word natively treats highlighted data cells as a continuous string 
         ' fragment within the selection object model, this Find operation handles table text 
-        ' identically to standard text lines[cite: 115]. It clears out space clutter inside 
-        ' your rows instantly without requiring slow, cell-by-cell nested loop routines[cite: 116].
+        ' identically to standard text lines. It clears out space clutter inside 
+        ' your rows instantly without requiring slow, cell-by-cell nested loop routines.
         Do While .Execute(Replace:=wdReplaceAll)
             ' Loop body intentionally left blank; execution evaluation handles the tracking.
         Loop
@@ -485,13 +466,9 @@ Sub Misc_6_Correct_Selected_Paragraph_Indents()
     ' ============================================================================
     ' MODULE NAME:  Misc_6_Correct_Selected_Paragraph_Indents
     ' PURPOSE:      Resets left, right, and first-line/hanging indents to 0
-    '               for selected paragraphs, explicitly skipping active lists[cite: 1, 2].
+    '               for selected paragraphs, explicitly skipping active lists.
     ' SCOPE:        Applies exclusively to highlighted text blocks. Safely bypasses 
-    '               automated bulleted, numbered, or multi-tier outline lists[cite: 2].
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Restricts processing boundaries to the active Selection object,
-    '               eliminating the lag of global content scans and preventing
-    '               screen flickering during batch formatting tasks[cite: 3, 4].
+    '               automated bulleted, numbered, or multi-tier outline lists.
     ' ============================================================================
     
     Dim para As Paragraph
@@ -500,7 +477,7 @@ Sub Misc_6_Correct_Selected_Paragraph_Indents()
     On Error GoTo CleanUp
     
     ' Performance Optimization: Freeze visual layout rendering to stop Word from redrawing 
-    ' page layouts line-by-line, accelerating execution speeds on heavy contracts[cite: 3, 12, 13].
+    ' page layouts line-by-line, accelerating execution speeds on heavy contracts.
     Application.ScreenUpdating = False
     
     ' -----------------------------------------------------------------
@@ -508,33 +485,33 @@ Sub Misc_6_Correct_Selected_Paragraph_Indents()
     ' -----------------------------------------------------------------
     ' ARCHITECTURAL STRATEGY: Instead of querying the global text layer (ActiveDocument.Content), 
     ' which requires expensive processing loops, the macro isolates its boundaries to the 
-    ' Selection object, evaluating only what is actively highlighted on the screen[cite: 4, 5].
+    ' Selection object, evaluating only what is actively highlighted on the screen.
     For Each para In Selection.Paragraphs
         
         ' -----------------------------------------------------------------
         ' 2. THE LIST IMMUNITY FILTER (wdListNoNumbering)
         ' -----------------------------------------------------------------
         ' In Microsoft Word's backend engine, the ListType property categorizes the underlying 
-        ' layout schema of text elements[cite: 6]. By validating that this property matches 
-        ' wdListNoNumbering, the macro forces a strict match for plain body text[cite: 7].
+        ' layout schema of text elements. By validating that this property matches 
+        ' wdListNoNumbering, the macro forces a strict match for plain body text.
         ' This selectively shields automated bullet points (wdListBullet), basic numeric sequences 
-        ' (wdListSimpleNumbering), and multi-tier legal hierarchies from modification[cite: 7].
+        ' (wdListSimpleNumbering), and multi-tier legal hierarchies from modification.
         If para.Range.ListFormat.ListType = wdListNoNumbering Then
             
             ' -----------------------------------------------------------------
             ' 3. DIRECT PARAMETER RESETTING
             ' -----------------------------------------------------------------
             ' Following advanced Word VBA practices, layout operations are applied directly to 
-            ' the Paragraph variable interface rather than routing through sub-objects[cite: 8].
+            ' the Paragraph variable interface rather than routing through sub-objects.
             ' Setting these three parameters comprehensively cleans the margins:
             
-            ' Aligns the baseline left-hand margin boundary perfectly against the page margins[cite: 9].
+            ' Aligns the baseline left-hand margin boundary perfectly against the page margins.
             para.LeftIndent = 0
             
-            ' Normalizes the right-hand text span boundary layout[cite: 10].
+            ' Normalizes the right-hand text span boundary layout.
             para.RightIndent = 0
             
-            ' Clears both positive first-line drops and negative custom hanging indents[cite: 11],
+            ' Clears both positive first-line drops and negative custom hanging indents,
             ' ensuring the paragraph text reads completely straight like a razor edge.
             para.FirstLineIndent = 0
             
@@ -543,7 +520,7 @@ Sub Misc_6_Correct_Selected_Paragraph_Indents()
     Next para
 
 CleanUp:
-    ' Essential Safety Pass: Forcefully restore visual application screen rendering[cite: 12],
+    ' Essential Safety Pass: Forcefully restore visual application screen rendering,
     ' ensuring the user workspace updates cleanly even if a fatal error occurs.
     Application.ScreenUpdating = True
     
@@ -564,9 +541,6 @@ Sub Misc_7_Fix_Table_Row_Cell_Padding()
     '               Strips inherited paragraph spacing, clears hidden cell padding,
     '               and sets rows to auto-fit text heights tightly without layout
     '               clipping or text lines wrapping unexpectedly.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Loops directly through the Document Collection, bypassing the 
-    '               Selection object to prevent screen flicker and macro lag.
     ' =========================================================================
     
     Dim tbl As Table
