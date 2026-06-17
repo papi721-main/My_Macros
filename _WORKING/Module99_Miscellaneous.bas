@@ -231,6 +231,46 @@ Sub Misc_3_Fix_Common_Misspellings()
                     ' Configure replacement criteria parameters
                     .Text = CStr(incorrectWord)
                     .Replacement.Text = correctWord
+                    
+                    ' -------------------------------------------------------------
+                    ' CRITICAL SAFETY ENGINE REGISTRATION RULES
+                    ' -------------------------------------------------------------
+                    ' CASE FLEXIBILITY FILTER: Setting MatchCase to False allows Word 
+                    ' to safely auto-detect capitalization styles. If it encounters 
+                    ' "Dpcumentation" at the start of a sentence, it naturally replaces 
+                    ' it with "Documentation" while keeping the capitalized formatting intact.
+                    .MatchCase = False
+                    
+                    ' ANTI-FRAGMENT COLLISION PROTECTION: This is the most critical safeguard.
+                    ' Without .MatchWholeWord = True set, a command to fix a typo like "teh" 
+                    ' into "the" would accidentally warp a perfectly spelled word like 
+                    ' "technique" into "thechnique". Forcing whole-word matching eliminates this risk.
+                    .MatchWholeWord = True
+                    
+                    ' BOUNDARY TRACKING DEFENSER: Setting .Wrap to wdFindStop instructs the engine 
+                    ' to process the isolated text story from top to bottom exactly once. 
+                    ' This prevents Word from getting trapped in an endless loop at the range margin.
+                    .Wrap = wdFindStop
+                    
+                    ' Fire the native Find engine to execute a global bulk replacement pass across the story
+                    .Execute Replace:=wdReplaceAll
+                End With
+                
+                ' LINKED RANGE ASSIGNMENT: Word frequently splits sub-layers (such as linked text 
+                ' boxes or detached footnotes) into sequential sub-story pointer sequences. 
+                ' NextStoryRange ensures the tracking pointer steps forward through downstream links.
+                Set story = story.NextStoryRange
+            Loop Until story Is Nothing
+        Next story
+    Next incorrectWord
+    
+    ' Re-enable screen rendering to display the finalized structural updates to the user
+    Application.ScreenUpdating = True
+    
+    ' Signal execution completion to the operator
+    MsgBox "Spelling correction sweep complete across all document layers!", _
+           vbInformation, "Auto-Correction Successful"
+End Sub
 
 Sub Misc_4_Trim_Headings()
     ' =========================================================================
