@@ -5,6 +5,10 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
     '               structural layer of the active document, including stubborn 
     '               unlinked headers/footers.
     ' SCOPE:        Main document text, tables, headers, footers, text boxes, footnotes.
+    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+    ' PERFORMANCE:  Employs a two-pass strategy combining background story loops
+    '               with explicit section audits. Uses ScreenUpdating control
+    '               to bypass the physical cursor, avoiding screen flicker.
     ' =========================================================================
     
     Dim doc As Document
@@ -34,7 +38,7 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
             ' NextStoryRange ensures the pointer evaluates downstream links in this story.
             Set story = story.NextStoryRange
         Loop Until story Is Nothing
-    For Each story In doc.StoryRanges
+    Next story ' <-- ARCHITECTURAL FIX: Replaced duplicate For Each statement to close loop legally
     
     ' =========================================================================
     ' PASS 2: DEEP SECTION PENETRATION (Forces dormant headers/footers awake)
@@ -73,7 +77,7 @@ Sub Misc_1_Clear_All_Highlighting_Globally()
         
     Next sec
     
-    ' Re-enable screen rendering to display the finalized layout updates 
+    ' Re-enable screen rendering to display the finalized layout updates
     Application.ScreenUpdating = True
     
     ' Signal execution completion to the operator
