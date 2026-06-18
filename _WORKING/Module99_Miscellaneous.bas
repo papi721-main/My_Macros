@@ -997,109 +997,115 @@ Sub Misc_11_Reset_All_List_Style_Links()
     MsgBox "All list template style links have been successfully cleared!", vbInformation, "Links Reset"
 End Sub
 
-Sub Misc_12_Turn_On_Outline_Levels_Highlight()
+Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     ' =========================================================================
-    ' MODULE NAME:  Misc_12_Turn_On_Outline_Levels_Highlight
-    ' PURPOSE:      Scans the document to find and highlight any paragraph or line
-    '               assigned a structural Outline Level (Levels 1 to 9). This
-    '               exposes ghost headings and true structural landmarks easily.
-    ' SCOPE:        Main body text layer paragraphs. Automatically bypasses tables.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Loops through the Paragraphs collection using background ranges,
-    '               bypassing the cursor Selection to process without screen flicker.
+    ' MODULE NAME:  Misc_12_Turn_On_Outline_Level_Highlighting
+    ' PURPOSE:      Scans the document body to identify paragraphs assigned a 
+    '               structural outline level (1 to 9). Stams a specific custom
+    '               hex-mapped color background pattern over each distinct tier.
+    ' SCOPE:        Main document text paragraphs. Automatically protects tables.
+    ' PERFORMANCE:  Employs an in-memory hex-to-RGB translator paired with a flat 
+    '               Paragraph iteration sweep to bypass screen flickering.
     ' =========================================================================
     
     Dim doc As Document
     Dim para As Paragraph
     Dim counter As Long
+    Dim currentLevel As Long
+    Dim rgbPalette(1 To 9) As Long
     
     Set doc = ActiveDocument
     counter = 0
     
-    ' Freeze visual layout updates to stop the window from constantly repaginating
+    ' Freeze page layout re-pagination to maximize raw background processing speed
     Application.ScreenUpdating = False
     
-    ' Set the global default highlight tracking palette to turquoise for visibility
-    Options.DefaultHighlightColorIndex = wdTurquoise
+    ' -----------------------------------------------------------------
+    ' HEX PALETTE REGISTRATION MATRIX
+    ' -----------------------------------------------------------------
+    ' Map the explicit color specifications to Word's backend engine via RGB wrappers.
+    rgbPalette(1) = RGB(&HD6, &H4A, &H4A) ' Level 1: Crimson
+    rgbPalette(2) = RGB(&HFF, &H8F, &H3F) ' Level 2: Orange
+    rgbPalette(3) = RGB(&HE3, &HB4, &H41) ' Level 3: Gold
+    rgbPalette(4) = RGB(&H2D, &HD4, &HBF) ' Level 4: Teal
+    rgbPalette(5) = RGB(&H3B, &H82, &HF6) ' Level 5: Sapphire Blue
+    rgbPalette(6) = RGB(&H63, &H66, &HF1) ' Level 6: Indigo
+    rgbPalette(7) = RGB(&HA8, &H55, &HF7) ' Level 7: Amethyst Purple
+    rgbPalette(8) = RGB(&HEC, &H48, &H99) ' Level 8: Magenta
+    rgbPalette(9) = RGB(&H64, &H74, &H8B) ' Level 9: Slate Grey
     
     ' -----------------------------------------------------------------
     ' THE LANDMARK INTERCEPTION SWEEP
     ' -----------------------------------------------------------------
     For Each para In doc.Paragraphs
         
-        ' HARD GUARDRAIL: Skip data table blocks completely to protect cell structures
+        ' HARD GUARDRAIL: Skip table components entirely to protect data cells
         If Not para.Range.Information(wdWithInTable) Then
             
-            ' EVALUATION GATE: Check if the paragraph has a valid heading structural tier.
-            ' Word recognizes levels 1 through 9. Standard unranked body text paragraphs 
-            ' carry a property value of 10 (wdOutlineLevelBodyText).
-            If para.OutlineLevel >= 1 And para.OutlineLevel <= 9 Then
+            ' Extract the layout tier property integer directly from the paragraph block
+            currentLevel = para.OutlineLevel
+            
+            ' Word recognizes outline heading depths 1 through 9.
+            ' Unranked text body elements register as 10 (wdOutlineLevelBodyText) and are bypassed.
+            If currentLevel >= 1 And currentLevel <= 9 Then
                 
-                ' Apply the diagnostic highlight layer over the entire text line span
-                para.Range.HighlightColorIndex = wdTurquoise
+                ' Route directly through the paragraph's Shading interface to apply 24-bit color huing
+                para.Range.Shading.BackgroundPatternColor = rgbPalette(currentLevel)
                 counter = counter + 1
                 
             End If
         End If
     Next para
     
-    ' Re-enable system rendering to display the structural audit layers instantly
+    ' Re-enable application rendering to instantly push updates to the screen workspace
     Application.ScreenUpdating = True
     
-    ' -----------------------------------------------------------------
-    ' METRIC PROCESSING REPORT
-    ' -----------------------------------------------------------------
+    ' Signal audit metrics to the operator
     If counter > 0 Then
-        MsgBox "Diagnostic sweep complete! Found and highlighted " & counter & _
-               " paragraph(s) with an active structural outline level.", _
-               vbInformation, "Structural Audit Successful"
+        MsgBox "Multi-tier diagnostic sweep complete! Colored " & counter & _
+               " structural line elements.", vbInformation, "Diagnostic View Active"
     Else
-        MsgBox "Sweep complete! No paragraphs with custom outline levels were found.", _
-               vbInformation, "Document Clean"
+        MsgBox "Audit complete. No structural outline landmarks were discovered.", vbInformation, "Sweep Finished"
     End If
 End Sub
 
-Sub Misc_13_Turn_Off_Outline_Levels_Highlight()
+Sub Misc_13_Turn_Off_Outline_Level_Highlighting()
     ' =========================================================================
-    ' MODULE NAME:  Misc_13_Turn_Off_Outline_Levels_Highlight
-    ' PURPOSE:      Strips away the temporary turquoise diagnostic highlight layer 
-    '               applied during heading structural checks. 
-    ' SCOPE:        Main body text layer paragraphs. Bypasses other highlight colors
-    '               (like standard yellow/green text markers) to preserve manual reviews.
-    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
-    ' PERFORMANCE:  Loops through the Paragraphs collection using background ranges,
-    '               bypassing the cursor Selection to clear formatting without lag.
+    ' MODULE NAME:  Misc_13_Turn_Off_Outline_Level_Highlighting
+    ' PURPOSE:      Strips away the multi-color true-color diagnostic shading layer
+    '               stamped behind paragraphs, resetting text lines back to transparent.
+    ' SCOPE:        Main document paragraphs layer. Automatically skips table matrices.
+    ' PERFORMANCE:  Iterates text ranges inside background object streams, 
+    '               bypassing cursor movement logic to optimize execution speed.
     ' =========================================================================
     
     Dim para As Paragraph
     
-    ' Disable screen updates to freeze visual layout re-pagination.
-    ' This suppresses application window stuttering and drastically cuts down 
-    ' rendering overhead while scanning through multiple document lines.
+    ' Freeze visual application window rendering to prevent layout redraw lag
     Application.ScreenUpdating = False
     
     ' -----------------------------------------------------------------
-    ' SPECIFIC PALETTE SCANNING ENGINE
+    ' THE TRANSMUTATION RESET SWEEP
     ' -----------------------------------------------------------------
-    ' Iterate sequentially paragraph-by-paragraph through the document's main text story.
     For Each para In ActiveDocument.Paragraphs
         
-        ' THE TARGET CONTEXT FILTER: 
-        ' To prevent destroying a user's intentional, editorial formatting passes 
-        ' (e.g., critical warnings flagged in bright yellow or green), the macro 
-        ' explicitly queries the range's HighlightColorIndex property.
-        ' It isolates and triggers a reset ONLY if it strikes the diagnostic "wdTurquoise" flag.
-        If para.Range.HighlightColorIndex = wdTurquoise Then
+        ' Safety Guardrail: Insulate table data boundaries from formatting modifications
+        If Not para.Range.Information(wdWithInTable) Then
             
-            ' Strip the background formatting layer away from the paragraph range text canvas
-            para.Range.HighlightColorIndex = wdNoHighlight
-            
+            ' Verify if the paragraph range holds an active background shading assignment.
+            ' wdColorAutomatic represents default structural transparency in Word's layout engine.
+            If para.Range.Shading.BackgroundPatternColor <> wdColorAutomatic Then
+                
+                ' Erase the background color matrix, stripping the tint cleanly from the text span
+                para.Range.Shading.BackgroundPatternColor = wdColorAutomatic
+                
+            End If
         End If
     Next para
     
-    ' Re-enable application layout rendering to instantly display the newly cleaned document canvas
+    ' Re-enable application layout updates to instantly present the clean reporting canvas
     Application.ScreenUpdating = True
     
-    ' Signal completion metrics to the operator
-    MsgBox "Diagnostic highlights cleared!", vbInformation, "Reset Complete"
+    ' Notify user upon successful completion
+    MsgBox "Diagnostic multi-level shading cleared successfully!", vbInformation, "Reset Complete"
 End Sub
