@@ -1000,12 +1000,13 @@ End Sub
 Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     ' =========================================================================
     ' MODULE NAME:  Misc_12_Turn_On_Outline_Level_Highlighting
-    ' PURPOSE:      Scans the document body to identify paragraphs assigned a 
-    '               structural outline level (1 to 9). Stams a specific custom
-    '               hex-mapped color background pattern over each distinct tier.
+    ' PURPOSE:      Scans the document body to identify paragraphs assigned a
+    '               structural outline level (1 to 9), mapping them to an RGB grid.
+    '               CRITICAL ADDITION: Also intercepts paragraphs containing manually
+    '               typed heading numbers (e.g., 1.1, 1.1.1) that have zero structural
+    '               outline level assigned, stamping them with an Alarmed Violet tone.
     ' SCOPE:        Main document text paragraphs. Automatically protects tables.
-    ' PERFORMANCE:  Employs an in-memory hex-to-RGB translator paired with a flat 
-    '               Paragraph iteration sweep to bypass screen flickering.
+    ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
     ' =========================================================================
     
     Dim doc As Document
@@ -1014,16 +1015,33 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     Dim currentLevel As Long
     Dim rgbPalette(1 To 9) As Long
     
+    ' Regular Expression variables for capturing manually typed heading markers
+    Dim regEx As Object
+    Dim paraTxt As String
+    Dim alarmColor As Long
+    
     Set doc = ActiveDocument
     counter = 0
     
     ' Freeze page layout re-pagination to maximize raw background processing speed
     Application.ScreenUpdating = False
     
+    ' Initialize the late-bound VBScript Regular Expressions engine
+    Set regEx = CreateObject("VBScript.RegExp")
+    With regEx
+        ' Pattern looks for starts of lines matching digits separated by periods (e.g. 1., 1.1, 1.1.1.)
+        ' followed immediately by a space or a tab marker.
+        .Pattern = "^[ \t]*\d+(\.\d+)*[.\)-:]*[ \t]+"
+        .IgnoreCase = True
+        .Global = False
+    End With
+    
+    ' Define our structural alert color (Alarmed Violet / Magenta) for manual numbers lacking an outline tier
+    alarmColor = RGB(236, 72, 153)
+    
     ' -----------------------------------------------------------------
     ' HEX PALETTE REGISTRATION MATRIX
     ' -----------------------------------------------------------------
-    ' Map the explicit color specifications to Word's backend engine via RGB wrappers.
     rgbPalette(1) = RGB(&HD6, &H4A, &H4A) ' Level 1: Crimson
     rgbPalette(2) = RGB(&HFF, &H8F, &H3F) ' Level 2: Orange
     rgbPalette(3) = RGB(&HE3, &HB4, &H41) ' Level 3: Gold
@@ -1045,15 +1063,30 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
             ' Extract the layout tier property integer directly from the paragraph block
             currentLevel = para.OutlineLevel
             
-            ' Word recognizes outline heading depths 1 through 9.
-            ' Unranked text body elements register as 10 (wdOutlineLevelBodyText) and are bypassed.
+            ' Case A: Valid structural outline landmark detected (Levels 1 through 9)
             If currentLevel >= 1 And currentLevel <= 9 Then
                 
                 ' Route directly through the paragraph's Shading interface to apply 24-bit color huing
                 para.Range.Shading.BackgroundPatternColor = rgbPalette(currentLevel)
                 counter = counter + 1
                 
+            ' Case B: Paragraph behaves like body text structurally, but might contain an un-styled number string
+            ElseIf currentLevel = wdOutlineLevelBodyText Then
+                paraTxt = para.Range.text
+                
+                ' Execute the regex validator evaluation pass on the raw string line
+                If regEx.Test(paraTxt) Then
+                    
+                    ' Verify that this isn't an automated Word List field layout block to prevent false positives
+                    If para.Range.ListFormat.ListType = wdListNoNumbering Then
+                        ' Apply the structural flaw alert highlight pattern
+                        para.Range.Shading.BackgroundPatternColor = alarmColor
+                        counter = counter + 1
+                    End If
+                    
+                End If
             End If
+            
         End If
     Next para
     
@@ -1063,9 +1096,9 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     ' Signal audit metrics to the operator
     If counter > 0 Then
         MsgBox "Multi-tier diagnostic sweep complete! Colored " & counter & _
-               " structural line elements.", vbInformation, "Diagnostic View Active"
+               " structural line elements and hidden flaws.", vbInformation, "Diagnostic View Active"
     Else
-        MsgBox "Audit complete. No structural outline landmarks were discovered.", vbInformation, "Sweep Finished"
+        MsgBox "Audit complete. No structural outline landmarks or typed number anomalies discovered.", vbInformation, "Sweep Finished"
     End If
 End Sub
 
@@ -1074,8 +1107,8 @@ Sub Misc_13_Turn_Off_Outline_Level_Highlighting()
     ' MODULE NAME:  Misc_13_Turn_Off_Outline_Level_Highlighting
     ' PURPOSE:      Strips away the multi-color true-color diagnostic shading layer
     '               stamped behind paragraphs, resetting text lines back to transparent.
-    ' SCOPE:        Main document paragraphs layer. Automatically skips table matrices.
-    ' PERFORMANCE:  Iterates text ranges inside background object streams, 
+    ' SCOPE:        Main document paragraphs layer. Automatically sweeps table matrices.
+    ' PERFORMANCE:  Iterates text ranges inside background object streams,
     '               bypassing cursor movement logic to optimize execution speed.
     ' =========================================================================
     
@@ -1109,3 +1142,4 @@ Sub Misc_13_Turn_Off_Outline_Level_Highlighting()
     ' Notify user upon successful completion
     MsgBox "Diagnostic multi-level shading cleared successfully!", vbInformation, "Reset Complete"
 End Sub
+
