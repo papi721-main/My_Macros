@@ -202,44 +202,48 @@ Sub Style_4_Adjust_Styles()
 ' Name: Style_4_Adjust_Styles
 ' Purpose: Explicitly configures and standardizes the core paragraph styles
 '          (Normal, Heading 1 through Heading 4) and the Caption style.
-'          Establishes layout baselines, clears rogue tab stops, and ensures
-'          clean text geometries.
+'          Establishes layout baselines, clears rogue tab stops, strips out
+'          any legacy/manual paragraph borders, and ensures clean text geometries.
+' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+' PERFORMANCE:  Modifies named stylesheet assets directly in memory, bypassing
+'               the need to loop paragraph-by-paragraph or move the cursor.
 '=============================================================================
     Dim doc As Document
     
     Set doc = ActiveDocument
     
-    ' Speed optimization: Turn off screen updates while shifting global layouts
+    ' Freeze visual application window rendering to prevent layout redraw lag
     Application.ScreenUpdating = False
+    
+    ' Establish global runtime error trapping to protect the active workspace environment
     On Error GoTo ErrorHandler
 
     '-------------------------------------------------------------------------
     ' 1. NORMAL STYLE (The baseline body text for your entire document)
     '-------------------------------------------------------------------------
-    With doc.styles("Normal")
+    With doc.Styles("Normal")
         .AutomaticallyUpdate = False
         With .Font
-            ' Basic Font Settings
+            ' Basic Font Properties
             .Name = "Calibri"
             .Size = 11
             .Bold = False
             .Italic = False
             .Color = wdColorAutomatic
-            .Outline = False            ' Removes any unwanted borders around text
-            .Shadow = False             ' Removes any unwanted shadow effects on text
-            .Emboss = False             ' Removes any unwanted embossing effects on text
-            .Engrave = False            ' Removes any unwanted engraving effects on text
+            .Outline = False            ' Removes any unwanted borders around text characters
+            .Shadow = False             ' Removes any legacy shadow tracking text effects
+            .Emboss = False             ' Clears any manual embossing text effects
+            .Engrave = False            ' Clears any manual engraving text effects
             
-            ' Advanced Settings
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-
+            ' Advanced Typography Rules
+            .Spacing = 0                                ' Resets manual character spacing adjustments
+            .Scaling = 100                              ' Normalizes font width scaling back to default
+            .Kerning = 0                                ' Disables explicit font kerning limits
+            .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
+            .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
+            .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
+            .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
+            .ContextualAlternates = 0                    ' Shuts off contextual character alternates
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -252,17 +256,22 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 0
             .SpaceAfter = 6
-            .LineSpacingRule = wdLineSpace1pt5     ' Standard 1.5 line spacing for headings
-            .Alignment = wdAlignParagraphJustify
-            .WidowControl = True
-            .TabStops.ClearAll
+            .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
+            .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
+            .WidowControl = True                   ' Prevents orphan sentences at page boundaries
+            .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
+            
+            ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
+            ' This strips out all outer perimeter lines while completely avoiding the diagonal 
+            ' table border variables that throw errors on paragraph configurations.
+            .Borders.Enable = False
         End With
     End With
 
     '-------------------------------------------------------------------------
-    ' 2. HEADING 1 (Primary Document Sections - All Caps & Justified)
+    ' 2. HEADING 1 (Primary Document Sections - All Caps & Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 1")
+    With doc.Styles("Heading 1")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -275,18 +284,15 @@ Sub Style_4_Adjust_Styles()
             .AllCaps = True
             .Color = wdColorAutomatic
 
-            
-            ' Advanced Settings
-            ' ------------------
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-
+            ' Advanced Typography Rules
+            .Spacing = 0
+            .Scaling = 100
+            .Kerning = 0
+            .Ligatures = wdLigaturesNone
+            .NumberSpacing = wdNumberSpacingDefault
+            .NumberForm = wdNumberFormDefault
+            .StylisticSet = wdStylisticSetDefault
+            .ContextualAlternates = 0
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -298,20 +304,21 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
-            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
-            .Alignment = wdAlignParagraphLeft      ' Left-aligned alignment for a clean block look
-            .OutlineLevel = wdOutlineLevel1        ' Ensures proper recognition in the document map, navigation pane, and TOC generation
-            .PageBreakBefore = True                ' Enforces new page for each major section
-            .KeepWithNext = True                   ' Prevents orphan headings at bottom of page
-            .KeepTogether = True                   ' Keeps heading on a single page to avoid awkward splits
+            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight heading layout
+            .Alignment = wdAlignParagraphLeft      ' Left-aligned for a clean layout break
+            .OutlineLevel = wdOutlineLevel1        ' Mandatory tier assignment for core TOC extraction
+            .PageBreakBefore = True                ' Automatically pushes major sections to a new page
+            .KeepWithNext = True                   ' Locks heading onto the same page as the following body text
+            .KeepTogether = True                   ' Prevents heading text lines from splitting across pages
             .TabStops.ClearAll
+            .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
 
     '-------------------------------------------------------------------------
     ' 3. HEADING 2 (Sub-sections - Left-Aligned & Bound to Following Text)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 2")
+    With doc.Styles("Heading 2")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -323,17 +330,15 @@ Sub Style_4_Adjust_Styles()
             .Italic = False
             .Color = wdColorAutomatic
             
-            ' Advanced Settings
-            ' ------------------
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-            
+            ' Advanced Typography Rules
+            .Spacing = 0
+            .Scaling = 100
+            .Kerning = 0
+            .Ligatures = wdLigaturesNone
+            .NumberSpacing = wdNumberSpacingDefault
+            .NumberForm = wdNumberFormDefault
+            .StylisticSet = wdStylisticSetDefault
+            .ContextualAlternates = 0
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -345,20 +350,21 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
-            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
+            .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
-            .KeepWithNext = True               ' Prevents orphan headings at bottom of page
-            .KeepTogether = True               ' Keeps heading on a single page
+            .KeepWithNext = True
+            .KeepTogether = True
             .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel2
+            .OutlineLevel = wdOutlineLevel2        ' TOC Tier 2 registration anchor
             .TabStops.ClearAll
+            .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
 
     '-------------------------------------------------------------------------
     ' 4. HEADING 3 (Sub-sub-sections)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 3")
+    With doc.Styles("Heading 3")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -370,17 +376,15 @@ Sub Style_4_Adjust_Styles()
             .Italic = False
             .Color = wdColorAutomatic
             
-            ' Advanced Settings
-            ' ------------------
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-            
+            ' Advanced Typography Rules
+            .Spacing = 0
+            .Scaling = 100
+            .Kerning = 0
+            .Ligatures = wdLigaturesNone
+            .NumberSpacing = wdNumberSpacingDefault
+            .NumberForm = wdNumberFormDefault
+            .StylisticSet = wdStylisticSetDefault
+            .ContextualAlternates = 0
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -392,20 +396,21 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
-            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
+            .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
             .KeepWithNext = True
             .KeepTogether = True
             .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel3
+            .OutlineLevel = wdOutlineLevel3        ' TOC Tier 3 registration anchor
             .TabStops.ClearAll
+            .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
 
     '-------------------------------------------------------------------------
     ' 5. HEADING 4 (Deep Hierarchy Details)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 4")
+    With doc.Styles("Heading 4")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -417,17 +422,15 @@ Sub Style_4_Adjust_Styles()
             .Italic = False
             .Color = wdColorAutomatic
 
-            ' Advanced Settings
-            ' ------------------
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-
+            ' Advanced Typography Rules
+            .Spacing = 0
+            .Scaling = 100
+            .Kerning = 0
+            .Ligatures = wdLigaturesNone
+            .NumberSpacing = wdNumberSpacingDefault
+            .NumberForm = wdNumberFormDefault
+            .StylisticSet = wdStylisticSetDefault
+            .ContextualAlternates = 0
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -439,20 +442,21 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
-            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight, impactful heading block
+            .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
             .KeepWithNext = True
             .KeepTogether = True
             .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel4
+            .OutlineLevel = wdOutlineLevel4        ' TOC Tier 4 registration anchor
             .TabStops.ClearAll
+            .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
 
     '-------------------------------------------------------------------------
     ' CAPTION STYLE (The style for captioning tables, figures, and other media)
     '-------------------------------------------------------------------------
-    With doc.styles("Caption")
+    With doc.Styles("Caption")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -466,17 +470,15 @@ Sub Style_4_Adjust_Styles()
             .AllCaps = False
             .SmallCaps = False
 
-            ' Advanced Settings
-            ' ------------------
-            .Spacing = 0                                ' Resets any manual character spacing adjustments
-            .Scaling = 100                              ' Resets any manual font scaling adjustments
-            .Kerning = 0                                ' Resets any manual kerning adjustments
-            .Ligatures = wdLigaturesNone                ' Disables any unwanted ligature formations
-            .NumberSpacing = wdNumberSpacingDefault     ' Resets any manual number spacing adjustments
-            .NumberForm = wdNumberFormDefault           ' Resets any manual number form adjustments (e.g., old-style vs. lining)
-            .StylisticSet = wdStylisticSetDefault       ' Resets any manual stylistic set selections
-            .ContextualAlternates = 0                   ' Disables any unwanted contextual alternate glyph substitutions
-            
+            ' Advanced Typography Rules
+            .Spacing = 0
+            .Scaling = 100
+            .Kerning = 0
+            .Ligatures = wdLigaturesNone
+            .NumberSpacing = wdNumberSpacingDefault
+            .NumberForm = wdNumberFormDefault
+            .StylisticSet = wdStylisticSetDefault
+            .ContextualAlternates = 0
         End With
         With .ParagraphFormat
             .LineUnitBefore = 0
@@ -489,22 +491,26 @@ Sub Style_4_Adjust_Styles()
             .SpaceBefore = 6
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpaceMultiple
-            .LineSpacing = LinesToPoints(1.15)      ' Dynamically calculates 1.15x line spacing based on font size
+            .LineSpacing = LinesToPoints(1.15)     ' Dynamically maps single-spaced multiple multipliers
             .Alignment = wdAlignParagraphJustify
-            .KeepWithNext = True
-            .KeepTogether = True
+            .KeepWithNext = True                   ' Keeps caption tethered onto the same page as its media asset
+            .KeepTogether = True                   ' Prevents caption lines from wrapping awkwardly across page breaks
             .WidowControl = True
-            .OutlineLevel = wdOutlineLevelBodyText
+            .OutlineLevel = wdOutlineLevelBodyText  ' Keeps captions from accidentally bleeding into your TOC index
             .TabStops.ClearAll
+            .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
 
 CleanUp:
+    ' Re-enable visual environment screen updates
     Application.ScreenUpdating = True
-    MsgBox "Styles successfully updated", vbInformation, "Success"
+    MsgBox "Styles successfully updated with paragraph borders safely cleared!", vbInformation, "Success"
     Exit Sub
 
 ErrorHandler:
+    ' Structural Fallback: Ensure system state unfreezes cleanly if a style lookup fails
+    Application.ScreenUpdating = True
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Style Preferences Error"
     Resume CleanUp
 End Sub
