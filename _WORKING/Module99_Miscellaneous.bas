@@ -1002,9 +1002,9 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     ' MODULE NAME:  Misc_12_Turn_On_Outline_Level_Highlighting
     ' PURPOSE:      Scans the document body to identify paragraphs assigned a
     '               structural outline level (1 to 9), mapping them to an RGB grid.
-    '               CRITICAL ADDITION: Also intercepts paragraphs containing manually
-    '               typed heading numbers (e.g., 1.1, 1.1.1) that have zero structural
-    '               outline level assigned, stamping them with an Alarmed Violet tone.
+    '               ADVANCED FIX: Intercepts manually typed OR automated list numbers
+    '               (e.g., 1.1, 1.1.1) that have zero structural outline level assigned,
+    '               using Word's .ListString buffer to catch invisible digit streams.
     ' SCOPE:        Main document text paragraphs. Automatically protects tables.
     ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
     ' =========================================================================
@@ -1015,10 +1015,13 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     Dim currentLevel As Long
     Dim rgbPalette(1 To 9) As Long
     
-    ' Regular Expression variables for capturing manually typed heading markers
     Dim regEx As Object
     Dim paraTxt As String
+    Dim cleanTxt As String
+    Dim displayDigits As String
     Dim alarmColor As Long
+    Dim chCode As Long
+    Dim i As Long
     
     Set doc = ActiveDocument
     counter = 0
@@ -1029,14 +1032,20 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
     ' Initialize the late-bound VBScript Regular Expressions engine
     Set regEx = CreateObject("VBScript.RegExp")
     With regEx
-        ' Pattern looks for starts of lines matching digits separated by periods (e.g. 1., 1.1, 1.1.1.)
-        ' followed immediately by a space or a tab marker.
-        .Pattern = "^[ \t]*\d+(\.\d+)*[.\)-:]*[ \t]+"
+        ' UNIVERSAL BOUNDARY PATTERN:
+        ' (?:^|[\r\n\x0B]) -> Matches start of paragraph or soft return
+        ' [ \t\xA0]* -> Absorbs spaces, tabs, and non-breaking spaces
+        ' \d+              -> Matches the first digit cluster
+        ' (\.\d+)* -> Loops through nested sub-levels (.1.1)
+        ' [.\)-:]* -> Catches trailing special punctuation styles
+        ' ([ \t\xA0]+|$)   -> Safely locks boundary to whitespace or end of line
+        .Pattern = "(?:^|[\r\n\x0B])[ \t\xA0]*\d+(\.\d+)*[.\)-:]*([ \t\xA0]+|$)"
         .IgnoreCase = True
         .Global = False
+        .multiline = True
     End With
     
-    ' Define our structural alert color (Alarmed Violet / Magenta) for manual numbers lacking an outline tier
+    ' Define our structural alert color (Alarmed Violet / Magenta)
     alarmColor = RGB(236, 72, 153)
     
     ' -----------------------------------------------------------------
@@ -1065,28 +1074,59 @@ Sub Misc_12_Turn_On_Outline_Level_Highlighting()
             
             ' Case A: Valid structural outline landmark detected (Levels 1 through 9)
             If currentLevel >= 1 And currentLevel <= 9 Then
-                
-                ' Route directly through the paragraph's Shading interface to apply 24-bit color huing
                 para.Range.Shading.BackgroundPatternColor = rgbPalette(currentLevel)
                 counter = counter + 1
                 
-            ' Case B: Paragraph behaves like body text structurally, but might contain an un-styled number string
+            ' Case B: Paragraph behaves like body text structurally, look for hidden list/number flaws
             ElseIf currentLevel = wdOutlineLevelBodyText Then
-                paraTxt = para.Range.text
                 
-                ' Execute the regex validator evaluation pass on the raw string line
-                If regEx.Test(paraTxt) Then
-                    
-                    ' Verify that this isn't an automated Word List field layout block to prevent false positives
-                    If para.Range.ListFormat.ListType = wdListNoNumbering Then
-                        ' Apply the structural flaw alert highlight pattern
-                        para.Range.Shading.BackgroundPatternColor = alarmColor
-                        counter = counter + 1
+                ' Initialize validation flag for this paragraph pass
+                Dim isFlawedHeading As Boolean
+                isFlawedHeading = False
+                
+                ' --- CRITICAL TEST 1: AUTOMATED WORD LIST ENGINES ---
+                ' Extract the string representation of Word's automated list field number
+                displayDigits = Trim(para.Range.ListFormat.ListString)
+                
+                ' If displayDigits holds content, Word is dynamically projecting numbers on screen
+                If Len(displayDigits) > 0 Then
+                    ' Test if those projected numbers match our heading pattern (e.g. 1.1 or 1.)
+                    If regEx.Test(displayDigits & " ") Then
+                        isFlawedHeading = True
                     End If
-                    
                 End If
+                
+                ' --- CRITICAL TEST 2: RAW TEXT TYPED STRINGS ---
+                ' Fall back to testing raw typed text if the list engine pass is clear
+                If Not isFlawedHeading Then
+                    paraTxt = Trim(para.Range.text)
+                    
+                    ' Sanitize unprintable unicode control variables from the text string
+                    cleanTxt = ""
+                    For i = 1 To Len(paraTxt)
+                        chCode = AscW(Mid(paraTxt, i, 1))
+                        If Not (chCode < 32 And chCode <> 9 And chCode <> 11 And chCode <> 13) And _
+                           Not (chCode >= &H200B And chCode <= &H200F) Then
+                            cleanTxt = cleanTxt & Mid(paraTxt, i, 1)
+                        End If
+                    Next i
+                    
+                    ' Run the regex check against our sanitized string text buffer
+                    If regEx.Test(cleanTxt) Then
+                        isFlawedHeading = True
+                    End If
+                End If
+                
+                ' ---------------------------------------------------------
+                ' ALARM STAMP DEPLOYMENT
+                ' ---------------------------------------------------------
+                If isFlawedHeading Then
+                    ' Forcefully tint the paragraph with our alert palette selection
+                    para.Range.Shading.BackgroundPatternColor = alarmColor
+                    counter = counter + 1
+                End If
+                
             End If
-            
         End If
     Next para
     
