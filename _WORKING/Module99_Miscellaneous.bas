@@ -1145,32 +1145,76 @@ End Sub
 Sub Misc_13_Turn_Off_Outline_Level_Highlighting()
     ' =========================================================================
     ' MODULE NAME:  Misc_13_Turn_Off_Outline_Level_Highlighting
-    ' PURPOSE:      Strips away the multi-color true-color diagnostic shading layer
-    '               stamped behind paragraphs, resetting text lines back to transparent.
+    ' PURPOSE:      Strips away ONLY the custom multi-color true-color diagnostic
+    '               shading layer stamped behind paragraphs by the diagnostic routine.
+    '               CRITICAL FEATURE: Preserves all pre-existing, manual, or style-based 
+    '               document background shading color markers.
     ' SCOPE:        Main document paragraphs layer. Automatically sweeps table matrices.
-    ' PERFORMANCE:  Iterates text ranges inside background object streams,
+    ' PERFORMANCE:  Iterates text ranges inside background object streams, 
     '               bypassing cursor movement logic to optimize execution speed.
     ' =========================================================================
     
     Dim para As Paragraph
+    Dim rgbPalette(1 To 9) As Long
+    Dim alarmColor As Long
+    Dim currentShading As Long
+    Dim isDiagnosticColor As Boolean
+    Dim i As Integer
     
     ' Freeze visual application window rendering to prevent layout redraw lag
     Application.ScreenUpdating = False
     
     ' -----------------------------------------------------------------
-    ' THE TRANSMUTATION RESET SWEEP
+    ' SIGNATURE MATRIX REGISTRATION
+    ' -----------------------------------------------------------------
+    ' We rebuild the exact same color palette list used in the turning on macro.
+    ' This gives the clearing sweeper a lookup signature to compare against.
+    alarmColor = RGB(236, 72, 153)
+    
+    rgbPalette(1) = RGB(&HD6, &H4A, &H4A)
+    rgbPalette(2) = RGB(&HFF, &H8F, &H3F)
+    rgbPalette(3) = RGB(&HE3, &HB4, &H41)
+    rgbPalette(4) = RGB(&H2D, &HD4, &HBF)
+    rgbPalette(5) = RGB(&H3B, &H82, &HF6)
+    rgbPalette(6) = RGB(&H63, &H66, &HF1)
+    rgbPalette(7) = RGB(&HA8, &H55, &HF7)
+    rgbPalette(8) = RGB(&HEC, &H48, &H99)
+    rgbPalette(9) = RGB(&H64, &H74, &H8B)
+    
+    ' -----------------------------------------------------------------
+    ' TARGETED RESET SWEEP
     ' -----------------------------------------------------------------
     For Each para In ActiveDocument.Paragraphs
         
         ' Safety Guardrail: Insulate table data boundaries from formatting modifications
         If Not para.Range.Information(wdWithInTable) Then
             
-            ' Verify if the paragraph range holds an active background shading assignment.
-            ' wdColorAutomatic represents default structural transparency in Word's layout engine.
-            If para.Range.Shading.BackgroundPatternColor <> wdColorAutomatic Then
+            ' Capture the active background pattern color value of the paragraph line
+            currentShading = para.Range.Shading.BackgroundPatternColor
+            
+            ' If the line has some form of color treatment, audit the color signature
+            If currentShading <> wdColorAutomatic Then
+                isDiagnosticColor = False
                 
-                ' Erase the background color matrix, stripping the tint cleanly from the text span
-                para.Range.Shading.BackgroundPatternColor = wdColorAutomatic
+                ' Check 1: Does it match our rogue manual list heading alarm color?
+                If currentShading = alarmColor Then
+                    isDiagnosticColor = True
+                Else
+                    ' Check 2: Does it match any of our 9 structural tier color signatures?
+                    For i = 1 To 9
+                        If currentShading = rgbPalette(i) Then
+                            isDiagnosticColor = True
+                            Exit For
+                        End If
+                    Next i
+                End If
+                
+                ' CRITICAL INSULATION OVERRIDE: 
+                ' Only reset the text line back to transparent if the color matches 
+                ' our signature matrix perfectly. Otherwise, skip it entirely.
+                If isDiagnosticColor Then
+                    para.Range.Shading.BackgroundPatternColor = wdColorAutomatic
+                End If
                 
             End If
         End If
@@ -1180,6 +1224,6 @@ Sub Misc_13_Turn_Off_Outline_Level_Highlighting()
     Application.ScreenUpdating = True
     
     ' Notify user upon successful completion
-    MsgBox "Diagnostic multi-level shading cleared successfully!", vbInformation, "Reset Complete"
+    MsgBox "Diagnostic multi-level shading cleared successfully! Intentional document highlights preserved.", vbInformation, "Reset Complete"
 End Sub
 
