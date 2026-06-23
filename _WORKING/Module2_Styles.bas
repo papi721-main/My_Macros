@@ -209,6 +209,8 @@ Sub Style_4_Adjust_Styles()
 '               the need to loop paragraph-by-paragraph or move the cursor.
 '=============================================================================
     Dim doc As Document
+    Dim headingNames As Variant
+    Dim i As Long
     
     Set doc = ActiveDocument
     
@@ -258,7 +260,7 @@ Sub Style_4_Adjust_Styles()
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
             .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
-            .WidowControl = True                   ' Prevents orphan sentences at page boundaries
+            .WidowControl = True                    ' Prevents orphan sentences at page boundaries
             .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
             
             ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
@@ -282,7 +284,6 @@ Sub Style_4_Adjust_Styles()
             .Bold = True
             .Italic = False
             .AllCaps = True
-            .Color = wdColorAutomatic
 
             ' Advanced Typography Rules
             .Spacing = 0
@@ -328,7 +329,6 @@ Sub Style_4_Adjust_Styles()
             .Size = 16
             .Bold = True
             .Italic = False
-            .Color = wdColorAutomatic
             
             ' Advanced Typography Rules
             .Spacing = 0
@@ -374,7 +374,6 @@ Sub Style_4_Adjust_Styles()
             .Size = 14
             .Bold = True
             .Italic = False
-            .Color = wdColorAutomatic
             
             ' Advanced Typography Rules
             .Spacing = 0
@@ -420,7 +419,6 @@ Sub Style_4_Adjust_Styles()
             .Size = 12
             .Bold = True
             .Italic = False
-            .Color = wdColorAutomatic
 
             ' Advanced Typography Rules
             .Spacing = 0
@@ -454,7 +452,7 @@ Sub Style_4_Adjust_Styles()
     End With
 
     '-------------------------------------------------------------------------
-    ' CAPTION STYLE (The style for captioning tables, figures, and other media)
+    ' 6. CAPTION STYLE (The style for captioning tables, figures, and other media)
     '-------------------------------------------------------------------------
     With doc.Styles("Caption")
         .BaseStyle = "Normal"
@@ -495,12 +493,27 @@ Sub Style_4_Adjust_Styles()
             .Alignment = wdAlignParagraphJustify
             .KeepWithNext = True                   ' Keeps caption tethered onto the same page as its media asset
             .KeepTogether = True                   ' Prevents caption lines from wrapping awkwardly across page breaks
-            .WidowControl = True
+            .WidowControl = True                    ' Prevents orphan sentences at page boundaries
             .OutlineLevel = wdOutlineLevelBodyText  ' Keeps captions from accidentally bleeding into your TOC index
             .TabStops.ClearAll
             .Borders.Enable = False                ' Safe structural border clear
         End With
     End With
+
+    '-------------------------------------------------------------------------
+    ' 7. CENTRALIZED HEADING COLOR PASS (Applies custom hex #182C52 via Loop)
+    '-------------------------------------------------------------------------
+    headingNames = Array("Heading 1", "Heading 2", "Heading 3", "Heading 4")
+    
+    For i = LBound(headingNames) To UBound(headingNames)
+        With doc.Styles(headingNames(i)).Font
+            ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
+            .Color = RGB(24, 44, 82)
+            
+            ' ROLLBACK TOGGLE: Uncomment the line below to easily reset everything back to Automatic
+            '.Color = wdColorAutomatic
+        End With
+    Next i
 
 CleanUp:
     ' Re-enable visual environment screen updates
