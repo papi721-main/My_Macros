@@ -508,10 +508,12 @@ Sub Style_4_Adjust_Styles()
     For i = LBound(headingNames) To UBound(headingNames)
         With doc.Styles(headingNames(i)).Font
             ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
-            .Color = RGB(24, 44, 82)
+            ' Use this for Bids
+            '.Color = RGB(24, 44, 82)
             
             ' ROLLBACK TOGGLE: Uncomment the line below to easily reset everything back to Automatic
-            '.Color = wdColorAutomatic
+            ' Use this for Projects
+            .Color = wdColorAutomatic
         End With
     Next i
 
