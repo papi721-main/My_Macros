@@ -588,14 +588,16 @@ Sub Style_5_Apply_Styles_To_Document()
     ' PHASE 2: TABLE PROTECTION LOOP
     '-------------------------------------------------------------------------
     ' Immediately restores tight single-line spacing inside all tables
-    For Each tbl In doc.Tables
-        With tbl.Range.ParagraphFormat
-            .SpaceBeforeAuto = False
-            .SpaceAfterAuto = False
-            .SpaceBefore = 0
-            .SpaceAfter = 0
-            .LineSpacingRule = wdLineSpaceMultiple
-            .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates single line spacing based on font size
+    For i = 3 To doc.Sections.Count
+        For Each tbl In doc.Sections(i).Range.Tables
+            ' PHASE 1: Localized Text Spacing Reset
+            With tbl.Range.ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                .SpaceAfter = 0
+                .LineSpacingRule = wdLineSpaceMultiple
+                .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates spacing based on font size
 
             ' If you want to use a specific line spacing value instead
             ' of single spacing, you can uncomment the following line
@@ -603,8 +605,17 @@ Sub Style_5_Apply_Styles_To_Document()
             ' --------------------------------------
             ' .LineSpacingRule = wdLineSpaceMultiple
             ' .LineSpacing = LinesToPoints(1.15)
-        End With
-    Next tbl
+            End With
+            
+            ' PHASE 2: Dynamic Row Height Clamping
+            ' Inline local error bypass to prevent vertically merged cells from crashing the script
+            On Error Resume Next 
+            tbl.Rows.Height = 0
+            tbl.Rows.HeightRule = wdRowHeightAuto
+            On Error GoTo ErrorHandler
+            
+        Next tbl
+    Next i
 
     '-------------------------------------------------------------------------
     ' PHASE 3: RESTORE & UP-CONVERT HEADING STYLES VIA OUTLINE LEVELS
@@ -799,16 +810,27 @@ Sub Style_8_Apply_Styles_To_Document_V2()
     ' PHASE 2: TABLE PROTECTION LOOP
     '-------------------------------------------------------------------------
     ' Immediately restores tight single-line spacing inside all tables
-    For Each tbl In doc.Tables
-        With tbl.Range.ParagraphFormat
-            .SpaceBeforeAuto = False
-            .SpaceAfterAuto = False
-            .SpaceBefore = 0
-            .SpaceAfter = 0
-            .LineSpacingRule = wdLineSpaceMultiple
-            .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates single line spacing based on font size
-        End With
-    Next tbl
+    For i = 3 To doc.Sections.Count
+        For Each tbl In doc.Sections(i).Range.Tables
+            ' PHASE 1: Localized Text Spacing Reset
+            With tbl.Range.ParagraphFormat
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                .SpaceAfter = 0
+                .LineSpacingRule = wdLineSpaceMultiple
+                .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates spacing based on font size
+            End With
+            
+            ' PHASE 2: Dynamic Row Height Clamping
+            ' Inline local error bypass to prevent vertically merged cells from crashing the script
+            On Error Resume Next 
+            tbl.Rows.Height = 0
+            tbl.Rows.HeightRule = wdRowHeightAuto
+            On Error GoTo ErrorHandler
+            
+        Next tbl
+    Next i
 
     '-------------------------------------------------------------------------
     ' CONSOLIDATED SCANNING ENGINE: LIST SPACING & OUTLINE CONVERSIONS
@@ -996,6 +1018,7 @@ Sub Style_9_Apply_Styles_To_Document_V3()
     ' Restores tight single-line spacing inside tables (only in Section 3 and beyond)
     For i = 3 To doc.Sections.Count
         For Each tbl In doc.Sections(i).Range.Tables
+            ' PHASE 1: Localized Text Spacing Reset
             With tbl.Range.ParagraphFormat
                 .SpaceBeforeAuto = False
                 .SpaceAfterAuto = False
@@ -1004,6 +1027,14 @@ Sub Style_9_Apply_Styles_To_Document_V3()
                 .LineSpacingRule = wdLineSpaceMultiple
                 .LineSpacing = LinesToPoints(1.15)     ' Dynamically calculates spacing based on font size
             End With
+            
+            ' PHASE 2: Dynamic Row Height Clamping
+            ' Inline local error bypass to prevent vertically merged cells from crashing the script
+            On Error Resume Next 
+            tbl.Rows.Height = 0
+            tbl.Rows.HeightRule = wdRowHeightAuto
+            On Error GoTo ErrorHandler
+            
         Next tbl
     Next i
 
