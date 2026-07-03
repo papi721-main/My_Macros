@@ -30,7 +30,7 @@ Sub Lists_1_Build_Multi_Level_List_for_Headings()
     
     ' --- LEVEL 1 (Heading 1 Root: e.g., "1.") ---
     With LT.ListLevels(1)
-        .NumberFormat = "%1."
+        .NumberFormat = "%1."       ' Defines the numbering format for level 1 (e.g., "1.")
         .TrailingCharacter = wdTrailingSpace
         .NumberStyle = wdListNumberStyleArabic
         .NumberPosition = InchesToPoints(0)
