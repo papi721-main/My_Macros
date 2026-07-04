@@ -205,7 +205,7 @@ Sub Layout_3_Delete_Section_Breaks()
         
         .Text = "^b"                ' Word's internal token pattern for Section Breaks
         .Replacement.Text = ""      ' Replace text with empty string (force deletion)
-        .Forward = True
+        .Forward = True             ' Enables forward search direction for the Find operation
         
         ' Enforces strict single-pass execution over the scope layout range
         .Wrap = wdFindStop
