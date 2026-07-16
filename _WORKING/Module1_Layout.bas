@@ -239,7 +239,7 @@ Sub Layout_4_Convert_Sections_To_Page_Breaks()
     ' Execute text parsing directly across the core body range
     With rng.Find
         .ClearFormatting                ' Clear any existing formatting filters for the Find operation
-        .Replacement.ClearFormatting
+        .Replacement.ClearFormatting    ' Clear any existing formatting filters for the Replace operation
         
         .Text = "^b"                ' Word's internal token pattern for Section Breaks
         .Replacement.Text = "^m"    ' Word's internal token pattern for Page Breaks
