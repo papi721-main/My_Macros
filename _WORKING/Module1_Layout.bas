@@ -8,8 +8,10 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
 ' Purpose: Loops through all document sections and configures page setups.
 '          Detects portrait vs. landscape orientations and assigns clean,
 '          standardized A4 dimensions and precise 0.25"/0.75" margin bounds.
-'          SAFE GUARDRAIL: Automatically bypasses sections locked by framed
-'          paragraphs or unmodifiable layout anomalies.
+'          SAFE GUARDRAILS:
+'            1. Restricts modifications STRICTLY to A4 or Letter size pages;
+'               skips all other paper sizes (A3, Legal, Executive, etc.).
+'            2. Automatically bypasses sections locked by framed paragraphs.
 '          REPORTER: Tracks and displays skipped sections at completion.
 '=============================================================================
     Dim doc As Document
@@ -18,6 +20,11 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
     Dim targetWidth As Double
     Dim targetHeight As Double
     Dim i As Long
+    
+    ' Page dimension tracking variables (in points)
+    Dim pWidth As Double
+    Dim pHeight As Double
+    Dim isA4OrLetter As Boolean
     
     ' Tracking variables for the final report
     Dim skippedSections As String
@@ -36,6 +43,41 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
     ' Loop through every isolated section block using a counter to remain stable
     For i = 1 To doc.Sections.Count
         Set sec = doc.Sections(i)
+        
+        ' ---------------------------------------------------------------------
+        ' A4 / LETTER SIZE VALIDATION GUARDRAIL
+        ' ---------------------------------------------------------------------
+        ' Measure section's current dimensions
+        pWidth = sec.PageSetup.PageWidth
+        pHeight = sec.PageSetup.PageHeight
+        isA4OrLetter = False
+        
+        ' Check native Word Enum constants first
+        If sec.PageSetup.PaperSize = wdPaperA4 Or sec.PageSetup.PaperSize = wdPaperLetter Then
+            isA4OrLetter = True
+        Else
+            ' Check explicit point bounds to catch custom-tagged A4 or Letter sizes
+            ' Letter: ~8.5" x 11" (612 pt x 792 pt) | A4: ~8.27" x 11.69" (595 pt x 842 pt)
+            ' Portrait check (Width 8.0" - 8.7", Height 10.5" - 12.0")
+            If (pWidth >= InchesToPoints(8) And pWidth <= InchesToPoints(8.7)) And _
+               (pHeight >= InchesToPoints(10.5) And pHeight <= InchesToPoints(12)) Then
+                isA4OrLetter = True
+            ' Landscape check (Width 10.5" - 12.0", Height 8.0" - 8.7")
+            ElseIf (pWidth >= InchesToPoints(10.5) And pWidth <= InchesToPoints(12)) And _
+                   (pHeight >= InchesToPoints(8) And pHeight <= InchesToPoints(8.7)) Then
+                isA4OrLetter = True
+            End If
+        End If
+        
+        ' If the page is NOT A4 or Letter (e.g. A3, Legal, etc.), skip it
+        If Not isA4OrLetter Then
+            If skippedSections = "" Then
+                skippedSections = CStr(i) & " (Not A4/Letter)"
+            Else
+                skippedSections = skippedSections & ", " & i & " (Not A4/Letter)"
+            End If
+            GoTo NextSection
+        End If
         
         ' Determine targeted A4 dimensions based on existing page orientation
         Select Case sec.PageSetup.Orientation
@@ -83,7 +125,7 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
             
             ' Header and Footer Layout Placement
             .HeaderDistance = InchesToPoints(0.25)
-            .FooterDistance = InchesToPoints(0.25)
+            .FooterDistance = InchesToPoints(0)
             
             ' Printer Tray and Break Rules
             .FirstPageTray = wdPrinterDefaultBin
@@ -95,7 +137,7 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
             .DifferentFirstPageHeaderFooter = False
             
             ' Advanced Page Content Processing Properties
-            .VerticalAlignment = wdAlignVerticalTop
+            '.VerticalAlignment = wdAlignVerticalTop
             .SuppressEndnotes = False
             .MirrorMargins = False
             .TwoPagesOnOne = False
@@ -110,9 +152,9 @@ Sub Layout_1_Adjust_Layout_On_All_Sections()
             ' Clear the error and log this specific section number as skipped
             Err.Clear
             If skippedSections = "" Then
-                skippedSections = CStr(i)
+                skippedSections = CStr(i) & " (Frame Locked)"
             Else
-                skippedSections = skippedSections & ", " & i
+                skippedSections = skippedSections & ", " & i & " (Frame Locked)"
             End If
         Else
             ' No error occurred; increment our success tracker
@@ -135,10 +177,10 @@ NextSection:
                     
     If skippedSections <> "" Then
         reportMessage = reportMessage & vbCrLf & vbCrLf & _
-                        "?? ATTENTION: The following sections were SKIPPED " & _
-                        "because they contain a locked or framed paragraph:" & vbCrLf & _
+                        "ATTENTION: The following sections were SKIPPED " & _
+                        "(Not A4/Letter size or locked by framed paragraphs):" & vbCrLf & _
                         "Section(s): " & skippedSections & vbCrLf & vbCrLf & _
-                        "Please inspect and adjust these sections manually."
+                        "Please inspect and adjust these sections manually if needed."
         MsgBox reportMessage, vbWarning, "Process Complete with Bypasses"
     Else
         MsgBox reportMessage, vbInformation, "Success"
