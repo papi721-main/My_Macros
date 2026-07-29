@@ -200,8 +200,9 @@ End Sub
 Sub Style_4_Adjust_Styles()
 '=============================================================================
 ' Name: Style_4_Adjust_Styles
-' Purpose: Explicitly configures and standardizes the core paragraph styles
-'          (Normal, Heading 1 through Heading 4) and the Caption style.
+' Purpose: Explicitly configures and standardizes core body styles (Normal,
+'          Normal (Web), Body Text, etc.), Heading styles (1 through 4),
+'          and the Caption style.
 '          Establishes layout baselines, clears rogue tab stops, strips out
 '          any legacy/manual paragraph borders, and ensures clean text geometries.
 ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
@@ -209,8 +210,10 @@ Sub Style_4_Adjust_Styles()
 '               the need to loop paragraph-by-paragraph or move the cursor.
 '=============================================================================
     Dim doc As Document
+    Dim normalStyleNames As Variant
     Dim headingNames As Variant
     Dim i As Long
+    Dim stName As Variant
     
     Set doc = ActiveDocument
     
@@ -221,54 +224,59 @@ Sub Style_4_Adjust_Styles()
     On Error GoTo ErrorHandler
 
     '-------------------------------------------------------------------------
-    ' 1. NORMAL STYLE (The baseline body text for your entire document)
+    ' 1. NORMAL & BODY TEXT STYLES LOOP (Standardizes baseline body text styles)
     '-------------------------------------------------------------------------
-    With doc.Styles("Normal")
-        .AutomaticallyUpdate = False
-        With .Font
-            ' Basic Font Properties
-            .Name = "Calibri"
-            .Size = 11
-            .Bold = False
-            .Italic = False
-            .Color = wdColorAutomatic
-            .Outline = False            ' Removes any unwanted borders around text characters
-            .Shadow = False             ' Removes any legacy shadow tracking text effects
-            .Emboss = False             ' Clears any manual embossing text effects
-            .Engrave = False            ' Clears any manual engraving text effects
-            
-            ' Advanced Typography Rules
-            .Spacing = 0                                ' Resets manual character spacing adjustments
-            .Scaling = 100                              ' Normalizes font width scaling back to default
-            .Kerning = 0                                ' Disables explicit font kerning limits
-            .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
-            .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
-            .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
-            .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
-            .ContextualAlternates = 0                    ' Shuts off contextual character alternates
+    normalStyleNames = Array("Normal", "Normal (Web)", "Body Text", "Normal Indent", "Body Text Indent")
+    
+    For Each stName In normalStyleNames
+        ' Temporary error bypass in case a specific variant style does not exist in the document
+        On Error Resume Next
+        With doc.Styles(stName)
+            .AutomaticallyUpdate = False
+            With .Font
+                ' Basic Font Properties
+                .Name = "Calibri"
+                .Size = 11
+                .Bold = False
+                .Italic = False
+                .Color = wdColorAutomatic
+                .Outline = False            ' Removes any unwanted borders around text characters
+                .Shadow = False             ' Removes any legacy shadow tracking text effects
+                .Emboss = False             ' Clears any manual embossing text effects
+                .Engrave = False            ' Clears any manual engraving text effects
+                
+                ' Advanced Typography Rules
+                .Spacing = 0                                ' Resets manual character spacing adjustments
+                .Scaling = 100                              ' Normalizes font width scaling back to default
+                .Kerning = 0                                ' Disables explicit font kerning limits
+                .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
+                .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
+                .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
+                .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
+                .ContextualAlternates = 0                    ' Shuts off contextual character alternates
+            End With
+            With .ParagraphFormat
+                .LineUnitBefore = 0
+                .LineUnitAfter = 0
+                .FirstLineIndent = InchesToPoints(0)
+                .OutlineLevel = wdOutlineLevelBodyText
+                .LeftIndent = InchesToPoints(0)
+                .RightIndent = InchesToPoints(0)
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                .SpaceAfter = 6
+                .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
+                .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
+                .WidowControl = True                    ' Prevents orphan sentences at page boundaries
+                .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
+                
+                ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
+                .Borders.Enable = False
+            End With
         End With
-        With .ParagraphFormat
-            .LineUnitBefore = 0
-            .LineUnitAfter = 0
-            .FirstLineIndent = InchesToPoints(0)
-            .OutlineLevel = wdOutlineLevelBodyText
-            .LeftIndent = InchesToPoints(0)
-            .RightIndent = InchesToPoints(0)
-            .SpaceBeforeAuto = False
-            .SpaceAfterAuto = False
-            .SpaceBefore = 0
-            .SpaceAfter = 6
-            .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
-            .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
-            .WidowControl = True                    ' Prevents orphan sentences at page boundaries
-            .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
-            
-            ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
-            ' This strips out all outer perimeter lines while completely avoiding the diagonal 
-            ' table border variables that throw errors on paragraph configurations.
-            .Borders.Enable = False
-        End With
-    End With
+        On Error GoTo ErrorHandler
+    Next stName
 
     '-------------------------------------------------------------------------
     ' 2. HEADING 1 (Primary Document Sections - All Caps & Left-Aligned)
@@ -491,12 +499,12 @@ Sub Style_4_Adjust_Styles()
             .LineSpacingRule = wdLineSpaceMultiple
             .LineSpacing = LinesToPoints(1.15)     ' Dynamically maps single-spaced multiple multipliers
             .Alignment = wdAlignParagraphJustify
-            .KeepWithNext = True                   ' Keeps caption tethered onto the same page as its media asset
-            .KeepTogether = True                   ' Prevents caption lines from wrapping awkwardly across page breaks
+            .KeepWithNext = True                    ' Keeps caption tethered onto the same page as its media asset
+            .KeepTogether = True                    ' Prevents caption lines from wrapping awkwardly across page breaks
             .WidowControl = True                    ' Prevents orphan sentences at page boundaries
             .OutlineLevel = wdOutlineLevelBodyText  ' Keeps captions from accidentally bleeding into your TOC index
             .TabStops.ClearAll
-            .Borders.Enable = False                ' Safe structural border clear
+            .Borders.Enable = False                 ' Safe structural border clear
         End With
     End With
 
@@ -508,11 +516,9 @@ Sub Style_4_Adjust_Styles()
     For i = LBound(headingNames) To UBound(headingNames)
         With doc.Styles(headingNames(i)).Font
             ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
-            ' Use this for Bids
             '.Color = RGB(24, 44, 82)
             
             ' ROLLBACK TOGGLE: Uncomment the line below to easily reset everything back to Automatic
-            ' Use this for Projects
             .Color = wdColorAutomatic
         End With
     Next i
