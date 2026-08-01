@@ -1607,6 +1607,187 @@ Private Sub DeleteMatchingImagesInHeaderFooter(hf As HeaderFooter, _
     Next i
 End Sub
 
+
+Sub Misc_17_Apply_AltText_To_Images_Globally_By_Size()
+' ==============================================================================
+' MODULE NAME    : Misc_17_Apply_AltText_To_Images_Globally_By_Size
+' PURPOSE        : Reads selected image(s) or shape(s) to capture width, height,
+'                  and type profiles. Prompts the user for Title and Alt Text,
+'                  then updates all matching image instances across the main
+'                  document body, embedded tables, headers, and footers.
+' COMPATIBILITY  : Microsoft Word (All Versions)
+' ==============================================================================
+    Dim doc As Document
+    Dim sec As Section
+    Dim hf As HeaderFooter
+    
+    ' Dynamic storage for target shape profiles
+    Dim targetWidths() As Single
+    Dim targetHeights() As Single
+    Dim targetTypes() As Long
+    Dim targetCount As Long
+    
+    Dim i As Long
+    Dim imgUpdatedCount As Long
+    Dim tolerance As Single
+    Dim newTitle As String
+    Dim newAltText As String
+    
+    Set doc = ActiveDocument
+    imgUpdatedCount = 0
+    targetCount = 0
+    tolerance = 0.5 ' Precision tolerance in points for Word layout rounding
+    
+    ' ==========================================================================
+    ' PHASE 1: Capture Target Image Metrics from User Selection
+    ' ==========================================================================
+    If Selection.Type = wdSelectionInlineShape Then
+        ' Single Inline Image Selected
+        targetCount = Selection.InlineShapes.Count
+        ReDim targetWidths(1 To targetCount)
+        ReDim targetHeights(1 To targetCount)
+        ReDim targetTypes(1 To targetCount)
+        
+        For i = 1 To targetCount
+            targetWidths(i) = Selection.InlineShapes(i).Width
+            targetHeights(i) = Selection.InlineShapes(i).Height
+            targetTypes(i) = Selection.InlineShapes(i).Type
+        Next i
+        
+    ElseIf Selection.ShapeRange.Count > 0 Then
+        ' One or More Floating Shapes Selected
+        targetCount = Selection.ShapeRange.Count
+        ReDim targetWidths(1 To targetCount)
+        ReDim targetHeights(1 To targetCount)
+        ReDim targetTypes(1 To targetCount)
+        
+        For i = 1 To targetCount
+            targetWidths(i) = Selection.ShapeRange(i).Width
+            targetHeights(i) = Selection.ShapeRange(i).Height
+            targetTypes(i) = Selection.ShapeRange(i).Type
+        Next i
+        
+    Else
+        MsgBox "Please select one or more target images first!", _
+               vbExclamation, "No Selection Detected"
+        Exit Sub
+    End If
+
+    ' ==========================================================================
+    ' PHASE 2: Prompt User for Title & Alt Text Description
+    ' ==========================================================================
+    newTitle = InputBox("Enter the TITLE for matching same-sized images:", "Set Image Title")
+    If StrPtr(newTitle) = 0 Then Exit Sub ' User clicked Cancel
+    
+    newAltText = InputBox("Enter the ALT TEXT (Description) for matching same-sized images:", "Set Alt Text Description")
+    If StrPtr(newAltText) = 0 Then Exit Sub ' User clicked Cancel
+    
+    ' Freeze live screen redraws to suppress visual jitter and maximize performance
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    
+    ' ==========================================================================
+    ' PHASE 3: Sweep Main Document Text and Embedded Tables
+    ' ==========================================================================
+    
+    ' 3A. Sweep Floating Shapes (Main Body & Tables)
+    For i = 1 To doc.Shapes.Count
+        With doc.Shapes(i)
+            If IsMatchingSizeAndType(.Width, .Height, .Type, targetWidths, targetHeights, targetTypes, targetCount, tolerance) Then
+                .Title = newTitle
+                .AlternativeText = newAltText
+                imgUpdatedCount = imgUpdatedCount + 1
+            End If
+        End With
+    Next i
+    
+    ' 3B. Sweep Inline Shapes (Main Body & Tables)
+    For i = 1 To doc.InlineShapes.Count
+        With doc.InlineShapes(i)
+            If IsMatchingSizeAndType(.Width, .Height, .Type, targetWidths, targetHeights, targetTypes, targetCount, tolerance) Then
+                .Title = newTitle
+                .AlternativeText = newAltText
+                imgUpdatedCount = imgUpdatedCount + 1
+            End If
+        End With
+    Next i
+    
+    ' ==========================================================================
+    ' PHASE 4: Sweep Headers and Footers Across All Document Sections
+    ' Multi-Layer Protection: Explicitly checks primary, first-page, and odd/even
+    ' sub-layers to wake up unlinked or dormant layout sections.
+    ' ==========================================================================
+    For Each sec In doc.Sections
+        
+        ' Process Section Headers
+        For Each hf In sec.Headers
+            If hf.Exists Then
+                Call ApplyAltTextToHeaderFooter(hf, newTitle, newAltText, targetWidths, targetHeights, targetTypes, targetCount, tolerance, imgUpdatedCount)
+            End If
+        Next hf
+        
+        ' Process Section Footers
+        For Each hf In sec.Footers
+            If hf.Exists Then
+                Call ApplyAltTextToHeaderFooter(hf, newTitle, newAltText, targetWidths, targetHeights, targetTypes, targetCount, tolerance, imgUpdatedCount)
+            End If
+        Next hf
+        
+    Next sec
+    
+    ' Re-enable application UI screen updating
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+    
+    ' Display execution completion summary
+    MsgBox "Alt Text Update Complete!" & vbCrLf & _
+           "Target Profile(s) Tracked: " & targetCount & vbCrLf & _
+           "Total matching image instances updated: " & imgUpdatedCount, _
+           vbInformation, "Update Alt Text Summary"
+End Sub
+
+Private Sub ApplyAltTextToHeaderFooter(hf As HeaderFooter, _
+                                       titleText As String, _
+                                       altText As String, _
+                                       widths() As Single, _
+                                       heights() As Single, _
+                                       types() As Long, _
+                                       tCount As Long, _
+                                       tol As Single, _
+                                       ByRef updateCount As Long)
+' ==============================================================================
+' PARENT MODULE     : Misc_17_Apply_AltText_To_Images_Globally_By_Size
+' HELPER SUBROUTINE : ApplyAltTextToHeaderFooter
+' PURPOSE           : Safely sweeps floating (Shapes) and inline (InlineShapes)
+'                     image collections inside a specific HeaderFooter layer
+'                     and updates Title and AlternativeText properties.
+' ==============================================================================
+    Dim i As Long
+    
+    ' 1. Floating Shapes in Header/Footer
+    For i = 1 To hf.Shapes.Count
+        With hf.Shapes(i)
+            If IsMatchingSizeAndType(.Width, .Height, .Type, widths, heights, types, tCount, tol) Then
+                .Title = titleText
+                .AlternativeText = altText
+                updateCount = updateCount + 1
+            End If
+        End With
+    Next i
+    
+    ' 2. Inline Shapes in Header/Footer Range
+    ' Calling hf.Range.InlineShapes explicitly exposes inline images embedded in header/footer text.
+    For i = 1 To hf.Range.InlineShapes.Count
+        With hf.Range.InlineShapes(i)
+            If IsMatchingSizeAndType(.Width, .Height, .Type, widths, heights, types, tCount, tol) Then
+                .Title = titleText
+                .AlternativeText = altText
+                updateCount = updateCount + 1
+            End If
+        End With
+    Next i
+End Sub
+
 Private Function IsMatchingSizeAndType(imgWidth As Single, _
                                        imgHeight As Single, _
                                        imgType As Long, _
@@ -1616,10 +1797,11 @@ Private Function IsMatchingSizeAndType(imgWidth As Single, _
                                        tCount As Long, _
                                        tol As Single) As Boolean
 ' ==============================================================================
-' PARENT MODULE     : Misc_16_Delete_Selected_Images_Globally_By_Size
-' HELPER FUNCTION   : IsMatchingSizeAndType
-' PURPOSE           : Evaluates an image's dimensions against the captured target
-'                     arrays using point precision tolerance.
+' PARENT MODULES     : Misc_16_Delete_Selected_Images_Globally_By_Size
+'                    : Misc_17_Apply_AltText_To_Images_Globally_By_Size
+' HELPER FUNCTION    : IsMatchingSizeAndType
+' PURPOSE            : Evaluates an image's dimensions against the captured target
+'                      arrays using point precision tolerance.
 ' ==============================================================================
     Dim k As Long
     IsMatchingSizeAndType = False
