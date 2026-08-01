@@ -1298,3 +1298,148 @@ Sub Misc_14_Remove_Highlight_Target_Words()
            vbInformation, "Highlight Removal Complete"
 End Sub
 
+Sub Misc_15_Delete_Image_Globally_By_Alt_Text()
+' ==============================================================================
+' MODULE NAME    : Misc_15_Delete_Image_Globally_By_Alt_Text
+' PURPOSE        : Searches the main body text, embedded tables, and all section
+'                  headers/footers for images matching ANY of the hardcoded Alt Text
+'                  or Title tags, and permanently deletes them globally.
+' COMPATIBILITY  : Microsoft Word (All Versions)
+' ==============================================================================
+    Dim doc As Document
+    Dim sec As Section
+    Dim hf As HeaderFooter
+    Dim targetTags() As Variant
+    Dim i As Long
+    Dim imgDeletedCount As Long
+    
+    ' --------------------------------------------------------------------------
+    ' CONFIGURATION: Define your array of target Alt Text / Title tags here.
+    ' You can list one or multiple tags separated by commas.
+    ' Examples: Array("DeleteMe") or Array("DeleteMe", "OldLogo", "Draft_Pic")
+    ' --------------------------------------------------------------------------
+    targetTags = Array("Melkamu Signature", "ABCE Stamp")
+    
+    ' Initialize references and counter
+    Set doc = ActiveDocument
+    imgDeletedCount = 0
+    
+    ' Freeze live screen redraws to suppress visual jitter and maximize performance
+    Application.ScreenUpdating = False
+    
+    ' Inline error bypass to handle locked or uneditable shape properties smoothly
+    On Error Resume Next
+    
+    ' ==========================================================================
+    ' PASS 1: Main Text Story (Includes Document Body Text and Embedded Tables)
+    ' ==========================================================================
+    
+    ' 1A. Floating Shapes (Main Body & Tables)
+    ' Traversal Rule: Count backward (Step -1) to prevent array index shifting
+    ' when shapes are deleted from the collection.
+    For i = doc.Shapes.Count To 1 Step -1
+        With doc.Shapes(i)
+            If IsMatchingTag(.Title, .AlternativeText, targetTags) Then
+                .Delete
+                imgDeletedCount = imgDeletedCount + 1
+            End If
+        End With
+    Next i
+    
+    ' 1B. Inline Shapes (Main Body & Tables)
+    For i = doc.InlineShapes.Count To 1 Step -1
+        With doc.InlineShapes(i)
+            If IsMatchingTag(.Title, .AlternativeText, targetTags) Then
+                .Delete
+                imgDeletedCount = imgDeletedCount + 1
+            End If
+        End With
+    Next i
+    
+    ' ==========================================================================
+    ' PASS 2: Headers and Footers Across All Document Sections
+    ' Multi-Layer Protection: Explicitly sweeps primary, first-page, and odd/even
+    ' header/footer sub-layers to wake up unlinked or dormant layout sections.
+    ' ==========================================================================
+    For Each sec In doc.Sections
+        
+        ' Process Section Headers
+        For Each hf In sec.Headers
+            If hf.Exists Then
+                Call DeleteImagesInHeaderFooterRange(hf, targetTags, imgDeletedCount)
+            End If
+        Next hf
+        
+        ' Process Section Footers
+        For Each hf In sec.Footers
+            If hf.Exists Then
+                Call DeleteImagesInHeaderFooterRange(hf, targetTags, imgDeletedCount)
+            End If
+        Next hf
+        
+    Next sec
+    
+    ' Re-enable application UI screen updating
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+    
+    ' Display execution completion summary
+    MsgBox "Cleanup Complete!" & vbCrLf & _
+           "Target Tags Searched: " & Join(targetTags, ", ") & vbCrLf & _
+           "Total instances of target image(s) deleted: " & imgDeletedCount, _
+           vbInformation, "Delete Image Summary"
+End Sub
+
+Private Sub DeleteImagesInHeaderFooterRange(hf As HeaderFooter, tags() As Variant, ByRef deleteCount As Long)
+' ==============================================================================
+' HELPER SUBROUTINE : DeleteImagesInHeaderFooterRange
+' PURPOSE           : Safely sweeps floating (Shapes) and inline (InlineShapes)
+'                     image collections inside a specific HeaderFooter layer.
+' ==============================================================================
+    Dim i As Long
+    
+    ' 1. Delete Floating Shapes in Header/Footer
+    For i = hf.Shapes.Count To 1 Step -1
+        With hf.Shapes(i)
+            If IsMatchingTag(.Title, .AlternativeText, tags) Then
+                .Delete
+                deleteCount = deleteCount + 1
+            End If
+        End With
+    Next i
+    
+    ' 2. Delete Inline Shapes in Header/Footer Range
+    ' Routing through hf.Range.InlineShapes explicitly exposes inline images
+    ' embedded inside header/footer text containers.
+    For i = hf.Range.InlineShapes.Count To 1 Step -1
+        With hf.Range.InlineShapes(i)
+            If IsMatchingTag(.Title, .AlternativeText, tags) Then
+                .Delete
+                deleteCount = deleteCount + 1
+            End If
+        End With
+    Next i
+End Sub
+
+
+Private Function IsMatchingTag(imgTitle As String, imgAltText As String, tags() As Variant) As Boolean
+' ==============================================================================
+' HELPER FUNCTION   : IsMatchingTag
+' PURPOSE           : Checks if either the Title or AlternativeText contains
+'                     ANY of the tags specified in the targetTags array.
+' ==============================================================================
+    Dim vTag As Variant
+    
+    IsMatchingTag = False
+    
+    For Each vTag In tags
+        If Trim(CStr(vTag)) <> "" Then
+            If InStr(1, imgTitle, CStr(vTag), vbTextCompare) > 0 Or _
+               InStr(1, imgAltText, CStr(vTag), vbTextCompare) > 0 Then
+                IsMatchingTag = True
+                Exit Function
+            End If
+        End If
+    Next vTag
+End Function
+
