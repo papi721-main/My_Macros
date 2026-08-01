@@ -631,6 +631,15 @@ Sub Misc_7_Fix_Table_Row_Cell_Padding()
             .LeftPadding = InchesToPoints(0.05)
             .RightPadding = InchesToPoints(0.05)
             
+            ' Invoke Word's built-in Table Options dialog to ensure that the internal
+            ' cell margin settings are fully flushed and applied to the layout engine.
+            With Dialogs(wdDialogTableTableOptions)
+                .allowspacing = False
+                .Execute
+            End With
+            
+            '.Spacing = 0
+            
             ' -----------------------------------------------------------------
             ' 3. DYNAMIC ROW HEIGHT CLAMPING
             ' -----------------------------------------------------------------
