@@ -214,6 +214,7 @@ Sub Style_4_Adjust_Styles()
     Dim headingNames As Variant
     Dim i As Long
     Dim stName As Variant
+    Dim headerFooterStyleNames As Variant
     
     Set doc = ActiveDocument
     
@@ -226,7 +227,12 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 1. NORMAL & BODY TEXT STYLES LOOP (Standardizes baseline body text styles)
     '-------------------------------------------------------------------------
-    normalStyleNames = Array("Normal", "Normal (Web)", "Body Text", "Normal Indent", "Body Text Indent")
+    normalStyleNames = Array( _
+        "Normal", _
+        "Normal (Web)", _
+        "Body Text", _
+        "Normal Indent", _
+        "Body Text Indent")
     
     For Each stName In normalStyleNames
         ' Temporary error bypass in case a specific variant style does not exist in the document
@@ -509,7 +515,64 @@ Sub Style_4_Adjust_Styles()
     End With
 
     '-------------------------------------------------------------------------
-    ' 7. CENTRALIZED HEADING COLOR PASS (Applies custom hex #182C52 via Loop)
+    ' 7. HEADERS & FOOTERS (Global Header/Footer Style Reset)
+    '-------------------------------------------------------------------------
+    headerFooterStyleNames = Array( _
+        "Header", _
+        "Footer")
+    
+    For Each stName In headerFooterStyleNames
+        ' Temporary error bypass in case a specific variant style does not exist in the document
+        On Error Resume Next
+        With doc.Styles(stName)
+            .AutomaticallyUpdate = False
+            With .Font
+                ' Basic Font Properties
+                .Name = "Calibri"
+                .Size = 11
+                .Bold = False
+                .Italic = False
+                .Color = wdColorAutomatic
+                .Outline = False            ' Removes any unwanted borders around text characters
+                .Shadow = False             ' Removes any legacy shadow tracking text effects
+                .Emboss = False             ' Clears any manual embossing text effects
+                .Engrave = False            ' Clears any manual engraving text effects
+                
+                ' Advanced Typography Rules
+                .Spacing = 0                                ' Resets manual character spacing adjustments
+                .Scaling = 100                              ' Normalizes font width scaling back to default
+                .Kerning = 0                                ' Disables explicit font kerning limits
+                .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
+                .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
+                .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
+                .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
+                .ContextualAlternates = 0                    ' Shuts off contextual character alternates
+            End With
+            With .ParagraphFormat
+                .LineUnitBefore = 0
+                .LineUnitAfter = 0
+                .FirstLineIndent = InchesToPoints(0)
+                .OutlineLevel = wdOutlineLevelBodyText
+                .LeftIndent = InchesToPoints(0)
+                .RightIndent = InchesToPoints(0)
+                .SpaceBeforeAuto = False
+                .SpaceAfterAuto = False
+                .SpaceBefore = 0
+                '.SpaceAfter = 0            ' Commented out to allow for a small buffer between header/footer and body text
+                .LineSpacingRule = wdLineSpaceSingle     ' Enforces single line heights for headers and footers
+                .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
+                .WidowControl = True                    ' Prevents orphan sentences at page boundaries
+                
+                ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
+                .Borders.Enable = False
+            End With
+        End With
+        On Error GoTo ErrorHandler
+    Next stName
+
+
+    '-------------------------------------------------------------------------
+    ' 8. CENTRALIZED HEADING COLOR PASS (Applies custom hex #182C52 via Loop)
     '-------------------------------------------------------------------------
     headingNames = Array("Heading 1", "Heading 2", "Heading 3", "Heading 4")
     
