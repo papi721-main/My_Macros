@@ -214,7 +214,6 @@ Sub Style_4_Adjust_Styles()
     Dim headingNames As Variant
     Dim i As Long
     Dim stName As Variant
-    Dim headerFooterStyleNames As Variant
     
     Set doc = ActiveDocument
     
@@ -233,11 +232,11 @@ Sub Style_4_Adjust_Styles()
         "Body Text", _
         "Normal Indent", _
         "Body Text Indent")
-    
+
     For Each stName In normalStyleNames
         ' Temporary error bypass in case a specific variant style does not exist in the document
         On Error Resume Next
-        With doc.Styles(stName)
+        With doc.styles(stName)
             .AutomaticallyUpdate = False
             With .Font
                 ' Basic Font Properties
@@ -287,7 +286,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 2. HEADING 1 (Primary Document Sections - All Caps & Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.Styles("Heading 1")
+    With doc.styles("Heading 1")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -333,7 +332,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 3. HEADING 2 (Sub-sections - Left-Aligned & Bound to Following Text)
     '-------------------------------------------------------------------------
-    With doc.Styles("Heading 2")
+    With doc.styles("Heading 2")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -378,7 +377,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 4. HEADING 3 (Sub-sub-sections)
     '-------------------------------------------------------------------------
-    With doc.Styles("Heading 3")
+    With doc.styles("Heading 3")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -423,7 +422,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 5. HEADING 4 (Deep Hierarchy Details)
     '-------------------------------------------------------------------------
-    With doc.Styles("Heading 4")
+    With doc.styles("Heading 4")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -468,7 +467,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 6. CAPTION STYLE (The style for captioning tables, figures, and other media)
     '-------------------------------------------------------------------------
-    With doc.Styles("Caption")
+    With doc.styles("Caption")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -515,69 +514,12 @@ Sub Style_4_Adjust_Styles()
     End With
 
     '-------------------------------------------------------------------------
-    ' 7. HEADERS & FOOTERS (Global Header/Footer Style Reset)
-    '-------------------------------------------------------------------------
-    headerFooterStyleNames = Array( _
-        "Header", _
-        "Footer")
-    
-    For Each stName In headerFooterStyleNames
-        ' Temporary error bypass in case a specific variant style does not exist in the document
-        On Error Resume Next
-        With doc.Styles(stName)
-            .AutomaticallyUpdate = False
-            With .Font
-                ' Basic Font Properties
-                .Name = "Calibri"
-                .Size = 11
-                .Bold = False
-                .Italic = False
-                .Color = wdColorAutomatic
-                .Outline = False            ' Removes any unwanted borders around text characters
-                .Shadow = False             ' Removes any legacy shadow tracking text effects
-                .Emboss = False             ' Clears any manual embossing text effects
-                .Engrave = False            ' Clears any manual engraving text effects
-                
-                ' Advanced Typography Rules
-                .Spacing = 0                                ' Resets manual character spacing adjustments
-                .Scaling = 100                              ' Normalizes font width scaling back to default
-                .Kerning = 0                                ' Disables explicit font kerning limits
-                .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
-                .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
-                .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
-                .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
-                .ContextualAlternates = 0                    ' Shuts off contextual character alternates
-            End With
-            With .ParagraphFormat
-                .LineUnitBefore = 0
-                .LineUnitAfter = 0
-                .FirstLineIndent = InchesToPoints(0)
-                .OutlineLevel = wdOutlineLevelBodyText
-                .LeftIndent = InchesToPoints(0)
-                .RightIndent = InchesToPoints(0)
-                .SpaceBeforeAuto = False
-                .SpaceAfterAuto = False
-                .SpaceBefore = 0
-                '.SpaceAfter = 0            ' Commented out to allow for a small buffer between header/footer and body text
-                .LineSpacingRule = wdLineSpaceSingle     ' Enforces single line heights for headers and footers
-                .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
-                .WidowControl = True                    ' Prevents orphan sentences at page boundaries
-                
-                ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
-                .Borders.Enable = False
-            End With
-        End With
-        On Error GoTo ErrorHandler
-    Next stName
-
-
-    '-------------------------------------------------------------------------
-    ' 8. CENTRALIZED HEADING COLOR PASS (Applies custom hex #182C52 via Loop)
+    ' 7. CENTRALIZED HEADING COLOR PASS (Applies custom hex #182C52 via Loop)
     '-------------------------------------------------------------------------
     headingNames = Array("Heading 1", "Heading 2", "Heading 3", "Heading 4")
     
     For i = LBound(headingNames) To UBound(headingNames)
-        With doc.Styles(headingNames(i)).Font
+        With doc.styles(headingNames(i)).Font
             ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
             '.Color = RGB(24, 44, 82)
             
@@ -1217,4 +1159,99 @@ ErrorHandler:
     ' Gracefully restore screen rendering before throwing the runtime message box
     Application.ScreenUpdating = True
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Formatting Error"
+End Sub
+
+
+Sub Style_10_Adjust_Headers_Footers_Styles()
+'=============================================================================
+' Name: Style_10_Adjust_Headers_Footers_Styles
+' Purpose: Standardizes header and footer styles across the active document.
+'          Resets font and paragraph formatting for built-in Header/Footer
+'          styles so they align with the document's base typography.
+'          Also clears layout noise such as rogue tab stops and legacy manual
+'          paragraph borders to keep header/footer text geometry clean.
+' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
+' PERFORMANCE:  Modifies named stylesheet assets directly in memory, bypassing
+'               the need to loop paragraph-by-paragraph or move the cursor.
+'=============================================================================
+    Dim doc As Document
+    Dim i As Long
+    Dim stName As Variant
+    Dim headerFooterStyleNames As Variant
+    
+    Set doc = ActiveDocument
+    
+    ' Freeze visual application window rendering to prevent layout redraw lag
+    Application.ScreenUpdating = False
+    
+    ' Establish global runtime error trapping to protect the active workspace environment
+    On Error GoTo ErrorHandler
+
+    '-------------------------------------------------------------------------
+    ' HEADERS & FOOTERS (Global Header/Footer Style Reset)
+    '-------------------------------------------------------------------------
+    headerFooterStyleNames = Array( _
+        "Header", _
+        "Footer")
+    
+    For Each stName In headerFooterStyleNames
+        ' Temporary error bypass in case a specific variant style does not exist in the document
+        On Error Resume Next
+        With doc.Styles(stName)
+            .AutomaticallyUpdate = False
+            With .Font
+                ' Basic Font Properties
+                .Name = "Calibri"
+                ' .Size = 11
+                ' .Bold = False
+                ' .Italic = False
+                ' .Color = wdColorAutomatic
+                ' .Outline = False            ' Removes any unwanted borders around text characters
+                ' .Shadow = False             ' Removes any legacy shadow tracking text effects
+                ' .Emboss = False             ' Clears any manual embossing text effects
+                ' .Engrave = False            ' Clears any manual engraving text effects
+                
+                ' Advanced Typography Rules
+                .Spacing = 0                                ' Resets manual character spacing adjustments
+                .Scaling = 100                              ' Normalizes font width scaling back to default
+                .Kerning = 0                                ' Disables explicit font kerning limits
+                .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
+                .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
+                .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
+                .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
+                .ContextualAlternates = 0                    ' Shuts off contextual character alternates
+            End With
+            ' With .ParagraphFormat
+            '     .LineUnitBefore = 0
+            '     .LineUnitAfter = 0
+            '     .FirstLineIndent = InchesToPoints(0)
+            '     .OutlineLevel = wdOutlineLevelBodyText
+            '     .LeftIndent = InchesToPoints(0)
+            '     .RightIndent = InchesToPoints(0)
+            '     .SpaceBeforeAuto = False
+            '     .SpaceAfterAuto = False
+            '     .SpaceBefore = 0
+            '     .SpaceAfter = 0            ' Commented out to allow for a small buffer between header/footer and body text
+            '     .LineSpacingRule = wdLineSpaceSingle     ' Enforces single line heights for headers and footers
+            '     .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
+            '     .WidowControl = True                    ' Prevents orphan sentences at page boundaries
+                
+            '     ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
+            '     .Borders.Enable = False
+            ' End With
+        End With
+        On Error GoTo ErrorHandler
+    Next stName
+
+CleanUp:
+    ' Re-enable visual environment screen updates
+    Application.ScreenUpdating = True
+    MsgBox "Styles successfully updated with paragraph borders safely cleared!", vbInformation, "Success"
+    Exit Sub
+
+ErrorHandler:
+    ' Structural Fallback: Ensure system state unfreezes cleanly if a style lookup fails
+    Application.ScreenUpdating = True
+    MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Style Preferences Error"
+    Resume CleanUp
 End Sub
