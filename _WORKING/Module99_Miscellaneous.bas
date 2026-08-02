@@ -1825,3 +1825,128 @@ Private Function IsMatchingSizeAndType(imgWidth As Single, _
         End If
     Next k
 End Function
+
+
+Sub Misc_18_Fix_Auto_Spacing_Paragraphs_Globally()
+' ==============================================================================
+' MODULE NAME    : Misc_18_Fix_Auto_Spacing_Paragraphs_Globally
+' PURPOSE        : Scans all paragraphs across the main document body, embedded 
+'                  tables, and header/footer sub-layers for "Auto" spacing flags.
+'                  Applies a standardized layout configuration (0pt Before, 6pt After,
+'                  1.5 line spacing, justified alignment) to all matching targets.
+' COMPATIBILITY  : Microsoft Word (All Versions)
+' ==============================================================================
+    Dim doc As Document
+    Dim sec As Section
+    Dim hf As HeaderFooter
+    Dim para As Paragraph
+    Dim updatedCount As Long
+    
+    Set doc = ActiveDocument
+    updatedCount = 0
+    
+    ' Freeze live screen redraws to suppress visual jitter and maximize performance
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    
+    ' ==========================================================================
+    ' PHASE 1: Sweep Main Document Text and Embedded Tables
+    ' ==========================================================================
+    For Each para In doc.Paragraphs
+        If IsAutoSpaced(para) Then
+            Call StandardizeParagraphFormat(para, updatedCount)
+        End If
+    Next para
+    
+    ' ==========================================================================
+    ' PHASE 2: Sweep Headers and Footers Across All Document Sections
+    ' Multi-Layer Protection: Explicitly checks primary, first-page, and odd/even
+    ' sub-layers to wake up unlinked or dormant layout sections.
+    ' ==========================================================================
+    For Each sec In doc.Sections
+        
+        ' Process Section Headers
+        For Each hf In sec.Headers
+            If hf.Exists Then
+                Call ProcessHeaderFooterParagraphs(hf, updatedCount)
+            End If
+        Next hf
+        
+        ' Process Section Footers
+        For Each hf In sec.Footers
+            If hf.Exists Then
+                Call ProcessHeaderFooterParagraphs(hf, updatedCount)
+            End If
+        Next hf
+        
+    Next sec
+    
+    ' Re-enable application UI screen updating
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+    
+    ' Display execution completion summary
+    MsgBox "Auto Spacing Cleanup Complete!" & vbCrLf & _
+           "Total matching paragraphs updated: " & updatedCount, _
+           vbInformation, "Fix Auto Spacing Summary"
+End Sub
+
+Private Sub ProcessHeaderFooterParagraphs(hf As HeaderFooter, ByRef updateCount As Long)
+' ==============================================================================
+' PARENT MODULE     : Misc_18_Fix_Auto_Spacing_Paragraphs_Globally
+' HELPER SUBROUTINE : ProcessHeaderFooterParagraphs
+' PURPOSE           : Sweeps paragraph collections inside a specific HeaderFooter 
+'                     layer and updates matching auto-spaced elements.
+' ==============================================================================
+    Dim hfPara As Paragraph
+    
+    For Each hfPara In hf.Range.Paragraphs
+        If IsAutoSpaced(hfPara) Then
+            Call StandardizeParagraphFormat(hfPara, updateCount)
+        End If
+    Next hfPara
+End Sub
+
+Private Function IsAutoSpaced(para As Paragraph) As Boolean
+' ==============================================================================
+' PARENT MODULE     : Misc_18_Fix_Auto_Spacing_Paragraphs_Globally
+' HELPER FUNCTION   : IsAutoSpaced
+' PURPOSE           : Checks if either SpaceBeforeAuto or SpaceAfterAuto is 
+'                     active on a target paragraph.
+' ==============================================================================
+    IsAutoSpaced = False
+    
+    If para.SpaceBeforeAuto = True Or para.SpaceAfterAuto = True Then
+        IsAutoSpaced = True
+    End If
+End Function
+
+Private Sub StandardizeParagraphFormat(para As Paragraph, ByRef updateCount As Long)
+' ==============================================================================
+' PARENT MODULE     : Misc_18_Fix_Auto_Spacing_Paragraphs_Globally
+' HELPER SUBROUTINE : StandardizeParagraphFormat
+' PURPOSE           : Applies the requested paragraph formatting rules directly to
+'                     the target paragraph range.
+' ==============================================================================
+    With para.Range.ParagraphFormat
+        .LineUnitBefore = 0
+        .LineUnitAfter = 0
+        .FirstLineIndent = InchesToPoints(0)
+        .OutlineLevel = wdOutlineLevelBodyText
+        .LeftIndent = InchesToPoints(0)
+        .RightIndent = InchesToPoints(0)
+        .SpaceBeforeAuto = False
+        .SpaceAfterAuto = False
+        .SpaceBefore = 0
+        .SpaceAfter = 6
+        .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
+        .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
+        .WidowControl = True                    ' Prevents orphan sentences at page boundaries
+        .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
+        
+        ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
+        .Borders.Enable = False
+    End With
+    
+    updateCount = updateCount + 1
+End Sub
