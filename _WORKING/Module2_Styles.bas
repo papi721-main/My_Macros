@@ -230,8 +230,13 @@ Sub Style_4_Adjust_Styles()
         "Normal", _
         "Normal (Web)", _
         "Body Text", _
+        "Body Text 2", _
+        "Body Text 3", _
         "Normal Indent", _
-        "Body Text Indent")
+        "Body Text Indent", _
+        "Body Text Indent 2", _
+        "Body Text Indent 3", _
+        "Table Paragraph")
 
     For Each stName In normalStyleNames
         ' Temporary error bypass in case a specific variant style does not exist in the document
