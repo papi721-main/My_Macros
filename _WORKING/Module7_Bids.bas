@@ -218,9 +218,9 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
 ' Name: Bids_3_Adjust_Bid_Document_Styles
 ' Purpose: Explicitly configures and standardizes core body styles (Normal,
 '          Normal (Web), Body Text, etc.), Heading styles (1 through 4),
-'          and the Caption style.
+'          and the Caption style specifically for Bid documents.
 '          Establishes layout baselines, clears rogue tab stops, strips out
-'          any legacy/manual paragraph borders, and ensures clean text geometries.
+'          any legacy/manual paragraph borders, and applies the #182C52 theme.
 ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
 ' PERFORMANCE:  Modifies named stylesheet assets directly in memory, bypassing
 '               the need to loop paragraph-by-paragraph or move the cursor.
@@ -240,7 +240,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
     On Error GoTo ErrorHandler
 
     '-------------------------------------------------------------------------
-    ' 1. NORMAL & BODY TEXT STYLES LOOP (Standardizes baseline body text styles)
+    ' 1. NORMAL & BODY TEXT STYLES (Baseline body typography & spacing)
     '-------------------------------------------------------------------------
     normalStyleNames = Array( _
         "Normal", _
@@ -255,10 +255,11 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
         "Table Paragraph")
 
     For Each stName In normalStyleNames
-        ' Temporary error bypass in case a specific variant style does not exist in the document
+        ' Temporary error bypass in case a specific variant style is missing from the document
         On Error Resume Next
-        With doc.styles(stName)
+        With doc.Styles(stName)
             .AutomaticallyUpdate = False
+            
             With .Font
                 ' Basic Font Properties
                 .Name = "Calibri"
@@ -266,21 +267,22 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
                 .Bold = False
                 .Italic = False
                 .Color = wdColorAutomatic
-                .Outline = False            ' Removes any unwanted borders around text characters
-                .Shadow = False             ' Removes any legacy shadow tracking text effects
-                .Emboss = False             ' Clears any manual embossing text effects
-                .Engrave = False            ' Clears any manual engraving text effects
+                .Outline = False            ' Removes text character outline borders
+                .Shadow = False             ' Removes legacy shadow text effects
+                .Emboss = False             ' Clears manual embossing
+                .Engrave = False            ' Clears manual engraving
                 
                 ' Advanced Typography Rules
-                .Spacing = 0                                ' Resets manual character spacing adjustments
-                .Scaling = 100                              ' Normalizes font width scaling back to default
-                .Kerning = 0                                ' Disables explicit font kerning limits
-                .Ligatures = wdLigaturesNone                ' Prevents automatic ligature glyph combinations
-                .NumberSpacing = wdNumberSpacingDefault     ' Standardizes numeric layout spacing
-                .NumberForm = wdNumberFormDefault           ' Resets lining vs. old-style number overrides
-                .StylisticSet = wdStylisticSetDefault       ' Disables advanced font stylistic glyph sets
-                .ContextualAlternates = 0                    ' Shuts off contextual character alternates
+                .Spacing = 0                ' Resets manual character spacing adjustments
+                .Scaling = 100              ' Normalizes font width scaling back to 100%
+                .Kerning = 0                ' Disables explicit font kerning limits
+                .Ligatures = wdLigaturesNone
+                .NumberSpacing = wdNumberSpacingDefault
+                .NumberForm = wdNumberFormDefault
+                .StylisticSet = wdStylisticSetDefault
+                .ContextualAlternates = 0
             End With
+            
             With .ParagraphFormat
                 .LineUnitBefore = 0
                 .LineUnitAfter = 0
@@ -292,34 +294,32 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
                 .SpaceAfterAuto = False
                 .SpaceBefore = 0
                 .SpaceAfter = 6
-                .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line heights
-                .Alignment = wdAlignParagraphJustify    ' Justified text layout for reporting blocks
-                .WidowControl = True                    ' Prevents orphan sentences at page boundaries
-                .TabStops.ClearAll                      ' Squeezes out rogue manual tab stop intervals
-                
-                ' ARCHITECTURAL STRATEGY: .Borders.Enable = False acts as a safe global clear pass.
-                .Borders.Enable = False
+                .LineSpacingRule = wdLineSpace1pt5     ' Enforces consistent 1.5 line height
+                .Alignment = wdAlignParagraphJustify    ' Justified alignment for body text
+                .WidowControl = True                    ' Prevents orphan/widow lines
+                .TabStops.ClearAll                      ' Clears custom/rogue tab stops
+                .Borders.Enable = False                 ' Clears legacy paragraph borders
             End With
         End With
         On Error GoTo ErrorHandler
     Next stName
 
     '-------------------------------------------------------------------------
-    ' 2. HEADING 1 (Primary Document Sections - All Caps & Left-Aligned)
+    ' 2. HEADING 1 (Primary Sections - 24pt, Bold, All Caps, Centered)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 1")
+    With doc.Styles("Heading 1")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
         .NoSpaceBetweenParagraphsOfSameStyle = True
+        
         With .Font
             .Name = "Calibri"
-            '.Size = 18      ' Set to 18 for Reports
-            .Size = 24       ' Set to 24 for Bids
+            .Size = 24
             .Bold = True
             .Italic = False
             .AllCaps = True
-
+            
             ' Advanced Typography Rules
             .Spacing = 0
             .Scaling = 100
@@ -330,6 +330,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .StylisticSet = wdStylisticSetDefault
             .ContextualAlternates = 0
         End With
+        
         With .ParagraphFormat
             .LineUnitBefore = 0
             .LineUnitAfter = 0
@@ -340,31 +341,26 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .SpaceAfterAuto = False
             .SpaceBefore = 6
             .SpaceAfter = 12
-            .LineSpacingRule = wdLineSpaceSingle   ' Single line spacing for a tight heading layout
-
-            '.Alignment = wdAlignParagraphLeft      ' Set to Left-aligned for Reports
-            .Alignment = wdAlignParagraphCenter    ' Set to Center-aligned for Bids
-
-            .OutlineLevel = wdOutlineLevel1        ' Mandatory tier assignment for core TOC extraction
-
-            '.PageBreakBefore = True                ' Set to True for Reports to force headings onto a new page
-            .PageBreakBefore = False              ' Set to False for Bids to allow headings to flow with content
-
-            .KeepWithNext = True                   ' Locks heading onto the same page as the following body text
-            .KeepTogether = True                   ' Prevents heading text lines from splitting across pages
+            .LineSpacingRule = wdLineSpaceSingle
+            .Alignment = wdAlignParagraphCenter         ' Centered for Bid document layout
+            .OutlineLevel = wdOutlineLevel1            ' Mandatory Tier 1 for TOC extraction
+            .PageBreakBefore = False                   ' Allows heading to flow naturally
+            .KeepWithNext = True                       ' Prevents separation from body text
+            .KeepTogether = True                       ' Prevents multiline heading splitting
             .TabStops.ClearAll
-            .Borders.Enable = False                ' Safe structural border clear
+            .Borders.Enable = False
         End With
     End With
 
     '-------------------------------------------------------------------------
-    ' 3. HEADING 2 (Sub-sections - Left-Aligned & Bound to Following Text)
+    ' 3. HEADING 2 (Sub-sections - 16pt, Bold, Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 2")
+    With doc.Styles("Heading 2")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
         .NoSpaceBetweenParagraphsOfSameStyle = True
+        
         With .Font
             .Name = "Calibri"
             .Size = 16
@@ -381,6 +377,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .StylisticSet = wdStylisticSetDefault
             .ContextualAlternates = 0
         End With
+        
         With .ParagraphFormat
             .LineUnitBefore = 0
             .LineUnitAfter = 0
@@ -393,23 +390,24 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
+            .OutlineLevel = wdOutlineLevel2            ' Mandatory Tier 2 for TOC extraction
+            .PageBreakBefore = False
             .KeepWithNext = True
             .KeepTogether = True
-            .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel2        ' TOC Tier 2 registration anchor
             .TabStops.ClearAll
-            .Borders.Enable = False                ' Safe structural border clear
+            .Borders.Enable = False
         End With
     End With
 
     '-------------------------------------------------------------------------
-    ' 4. HEADING 3 (Sub-sub-sections)
+    ' 4. HEADING 3 (Sub-sub-sections - 14pt, Bold, Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 3")
+    With doc.Styles("Heading 3")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
         .NoSpaceBetweenParagraphsOfSameStyle = True
+        
         With .Font
             .Name = "Calibri"
             .Size = 14
@@ -426,6 +424,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .StylisticSet = wdStylisticSetDefault
             .ContextualAlternates = 0
         End With
+        
         With .ParagraphFormat
             .LineUnitBefore = 0
             .LineUnitAfter = 0
@@ -438,23 +437,24 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
+            .OutlineLevel = wdOutlineLevel3            ' Mandatory Tier 3 for TOC extraction
+            .PageBreakBefore = False
             .KeepWithNext = True
             .KeepTogether = True
-            .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel3        ' TOC Tier 3 registration anchor
             .TabStops.ClearAll
-            .Borders.Enable = False                ' Safe structural border clear
+            .Borders.Enable = False
         End With
     End With
 
     '-------------------------------------------------------------------------
-    ' 5. HEADING 4 (Deep Hierarchy Details)
+    ' 5. HEADING 4 (Deep Hierarchy - 12pt, Bold, Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 4")
+    With doc.Styles("Heading 4")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
         .NoSpaceBetweenParagraphsOfSameStyle = True
+        
         With .Font
             .Name = "Calibri"
             .Size = 12
@@ -471,6 +471,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .StylisticSet = wdStylisticSetDefault
             .ContextualAlternates = 0
         End With
+        
         With .ParagraphFormat
             .LineUnitBefore = 0
             .LineUnitAfter = 0
@@ -483,23 +484,24 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .SpaceAfter = 12
             .LineSpacingRule = wdLineSpaceSingle
             .Alignment = wdAlignParagraphLeft
+            .OutlineLevel = wdOutlineLevel4            ' Mandatory Tier 4 for TOC extraction
+            .PageBreakBefore = False
             .KeepWithNext = True
             .KeepTogether = True
-            .PageBreakBefore = False
-            .OutlineLevel = wdOutlineLevel4        ' TOC Tier 4 registration anchor
             .TabStops.ClearAll
-            .Borders.Enable = False                ' Safe structural border clear
+            .Borders.Enable = False
         End With
     End With
 
     '-------------------------------------------------------------------------
-    ' 6. CAPTION STYLE (The style for captioning tables, figures, and other media)
+    ' 6. CAPTION STYLE (Tables, Figures, & Media)
     '-------------------------------------------------------------------------
-    With doc.styles("Caption")
+    With doc.Styles("Caption")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
         .NoSpaceBetweenParagraphsOfSameStyle = True
+        
         With .Font
             .Name = "Calibri"
             .Size = 11
@@ -519,6 +521,7 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .StylisticSet = wdStylisticSetDefault
             .ContextualAlternates = 0
         End With
+        
         With .ParagraphFormat
             .LineUnitBefore = 0
             .LineUnitAfter = 0
@@ -530,14 +533,14 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
             .SpaceBefore = 6
             .SpaceAfter = 6
             .LineSpacingRule = wdLineSpaceMultiple
-            .LineSpacing = LinesToPoints(1.15)     ' Dynamically maps single-spaced multiple multipliers
+            .LineSpacing = LinesToPoints(1.15)         ' Scalable 1.15 multiple line spacing
             .Alignment = wdAlignParagraphJustify
-            .KeepWithNext = True                    ' Keeps caption tethered onto the same page as its media asset
-            .KeepTogether = True                    ' Prevents caption lines from wrapping awkwardly across page breaks
-            .WidowControl = True                    ' Prevents orphan sentences at page boundaries
-            .OutlineLevel = wdOutlineLevelBodyText  ' Keeps captions from accidentally bleeding into your TOC index
+            .KeepWithNext = True                       ' Tether caption to media asset
+            .KeepTogether = True                       ' Prevents multi-line caption wrapping split
+            .WidowControl = True                       ' Prevents orphan lines
+            .OutlineLevel = wdOutlineLevelBodyText     ' Prevents captions from appearing in TOC
             .TabStops.ClearAll
-            .Borders.Enable = False                 ' Safe structural border clear
+            .Borders.Enable = False
         End With
     End With
 
@@ -547,23 +550,24 @@ Sub Bids_3_Adjust_Bid_Document_Styles()
     headingNames = Array("Heading 1", "Heading 2", "Heading 3", "Heading 4")
     
     For i = LBound(headingNames) To UBound(headingNames)
-        With doc.styles(headingNames(i)).Font
-            ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
-            '.Color = RGB(24, 44, 82)
+        With doc.Styles(headingNames(i)).Font
+            ' ACTIVE CONFIGURATION: Custom corporate dark blue (#182C52)
+            .Color = RGB(24, 44, 82)
             
-            ' ROLLBACK TOGGLE: Uncomment the line below to easily reset everything back to Automatic
-            .Color = wdColorAutomatic
+            ' ROLLBACK TOGGLE: To reset headings back to automatic, comment the line 
+            ' above and uncomment the line below:
+            ' .Color = wdColorAutomatic
         End With
     Next i
 
 CleanUp:
     ' Re-enable visual environment screen updates
     Application.ScreenUpdating = True
-    MsgBox "Styles successfully updated with paragraph borders safely cleared!", vbInformation, "Success"
+    MsgBox "Bid document styles successfully updated!", vbInformation, "Success"
     Exit Sub
 
 ErrorHandler:
-    ' Structural Fallback: Ensure system state unfreezes cleanly if a style lookup fails
+    ' Structural Fallback: Ensure system state unfreezes cleanly if an error occurs
     Application.ScreenUpdating = True
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Style Preferences Error"
     Resume CleanUp
