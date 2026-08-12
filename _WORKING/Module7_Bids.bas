@@ -568,3 +568,194 @@ ErrorHandler:
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Style Preferences Error"
     Resume CleanUp
 End Sub
+
+Sub Bids_4_Adjust_Bid_Documents_Layout()
+'=============================================================================
+' Name: Bids_4_Adjust_Bid_Documents_Layout
+' Purpose: Loops through document sections and configures page setups to A4.
+'          - Restricts modifications strictly to A4 or Letter size pages.
+'          - Section 1 (Cover): Preserves single header/footer mode.
+'          - Section 2+ (TOC & Body): Forces OddAndEvenPagesHeaderFooter = True.
+'          - If Odd & Even is ALREADY active: Adjusts margins, header/footer 
+'            distances, and page dimensions only.
+'          - Automatically bypasses sections locked by framed paragraphs.
+'=============================================================================
+    Dim doc As Document
+    Dim sec As Section
+    Dim targetOrient As Long
+    Dim targetWidth As Double
+    Dim targetHeight As Double
+    Dim i As Long
+    
+    ' Page dimension tracking variables (in points)
+    Dim pWidth As Double
+    Dim pHeight As Double
+    Dim isA4OrLetter As Boolean
+    Dim hasOddEvenAlready As Boolean
+    
+    ' Tracking variables for the final report
+    Dim skippedSections As String
+    Dim successCount As Long
+    
+    Set doc = ActiveDocument
+    skippedSections = ""
+    successCount = 0
+    
+    ' Speed optimization: Prevent screen flickering during deep object changes
+    Application.ScreenUpdating = False
+    
+    ' Enable global error handling trap for unexpected core execution errors
+    On Error GoTo CleanUp
+    
+    ' Loop through every isolated section block using a counter to remain stable
+    For i = 1 To doc.Sections.Count
+        Set sec = doc.Sections(i)
+        
+        ' ---------------------------------------------------------------------
+        ' A4 / LETTER SIZE VALIDATION GUARDRAIL
+        ' ---------------------------------------------------------------------
+        pWidth = sec.PageSetup.PageWidth
+        pHeight = sec.PageSetup.PageHeight
+        isA4OrLetter = False
+        
+        ' Check native Word Enum constants first
+        If sec.PageSetup.PaperSize = wdPaperA4 Or sec.PageSetup.PaperSize = wdPaperLetter Then
+            isA4OrLetter = True
+        Else
+            ' Check explicit point bounds to catch custom-tagged A4 or Letter sizes
+            ' Portrait check (Width 8.0" - 8.7", Height 10.5" - 12.0")
+            If (pWidth >= InchesToPoints(8) And pWidth <= InchesToPoints(8.7)) And _
+               (pHeight >= InchesToPoints(10.5) And pHeight <= InchesToPoints(12)) Then
+                isA4OrLetter = True
+            ' Landscape check (Width 10.5" - 12.0", Height 8.0" - 8.7")
+            ElseIf (pWidth >= InchesToPoints(10.5) And pWidth <= InchesToPoints(12)) And _
+                   (pHeight >= InchesToPoints(8) And pHeight <= InchesToPoints(8.7)) Then
+                isA4OrLetter = True
+            End If
+        End If
+        
+        ' If the page is NOT A4 or Letter (e.g., A3, Legal), skip it
+        If Not isA4OrLetter Then
+            If skippedSections = "" Then
+                skippedSections = CStr(i) & " (Not A4/Letter)"
+            Else
+                skippedSections = skippedSections & ", " & i & " (Not A4/Letter)"
+            End If
+            GoTo NextSection
+        End If
+        
+        ' Determine targeted A4 dimensions based on existing page orientation
+        Select Case sec.PageSetup.Orientation
+            Case wdOrientPortrait
+                targetOrient = wdOrientPortrait
+                targetWidth = 8.27   ' A4 Width in inches
+                targetHeight = 11.69 ' A4 Height in inches
+                
+            Case wdOrientLandscape
+                targetOrient = wdOrientLandscape
+                targetWidth = 11.69  ' A4 Landscape Width in inches
+                targetHeight = 8.27  ' A4 Landscape Height in inches
+                
+            Case Else
+                If skippedSections = "" Then
+                    skippedSections = CStr(i)
+                Else
+                    skippedSections = skippedSections & ", " & i
+                End If
+                GoTo NextSection
+        End Select
+        
+        ' ---------------------------------------------------------------------
+        ' LOCAL INLINE SAFETY GUARDRAIL FOR FRAMED PARAGRAPHS
+        ' ---------------------------------------------------------------------
+        On Error Resume Next
+        
+        ' Check if Odd and Even setting is already enabled on this section
+        hasOddEvenAlready = sec.PageSetup.OddAndEvenPagesHeaderFooter
+        
+        With sec.PageSetup
+            ' --- ALWAYS APPLY: Core Dimensions & Margins ---
+            .Orientation = targetOrient
+            .PageWidth = InchesToPoints(targetWidth)
+            .PageHeight = InchesToPoints(targetHeight)
+            
+            .TopMargin = InchesToPoints(0.25)
+            .BottomMargin = InchesToPoints(0.25)
+            .LeftMargin = InchesToPoints(0.75)
+            .RightMargin = InchesToPoints(0.75)
+            .Gutter = InchesToPoints(0)
+            
+            .HeaderDistance = InchesToPoints(0.25)
+            .FooterDistance = InchesToPoints(0)
+            
+            ' --- CONDITIONAL SETUP BASED ON EXISTING ODD/EVEN STATE & SECTION INDEX ---
+            If hasOddEvenAlready Then
+                ' Section ALREADY has Odd & Even enabled: Only update metrics (above)
+                ' and leave trays, breaks, and other flags untouched.
+            Else
+                ' Section does NOT have Odd & Even enabled yet: Apply full setup block
+                .LineNumbering.Active = False
+                .FirstPageTray = wdPrinterDefaultBin
+                .OtherPagesTray = wdPrinterDefaultBin
+                .SectionStart = wdSectionNewPage
+                .DifferentFirstPageHeaderFooter = False
+                .SuppressEndnotes = False
+                .MirrorMargins = False
+                .TwoPagesOnOne = False
+                .BookFoldPrinting = False
+                .BookFoldRevPrinting = False
+                .BookFoldPrintingSheets = 1
+                .GutterPos = wdGutterPosLeft
+                
+                ' Enable Odd and Even headers/footers for Section 2 and onwards
+                If i > 1 Then
+                    .OddAndEvenPagesHeaderFooter = True
+                Else
+                    .OddAndEvenPagesHeaderFooter = False
+                End If
+            End If
+        End With
+        
+        ' Check if the PageSetup properties threw a frame-lock error
+        If Err.Number <> 0 Then
+            Err.Clear
+            If skippedSections = "" Then
+                skippedSections = CStr(i) & " (Frame Locked)"
+            Else
+                skippedSections = skippedSections & ", " & i & " (Frame Locked)"
+            End If
+        Else
+            successCount = successCount + 1
+        End If
+        
+        ' Reset global error trapping rules for the next iteration step
+        On Error GoTo CleanUp
+
+NextSection:
+    Next i
+
+    ' Restore standard application window rendering
+    Application.ScreenUpdating = True
+    
+    ' Format and present the final completion report message box
+    Dim reportMessage As String
+    reportMessage = "Layout processing complete." & vbCrLf & vbCrLf & _
+                    "Sections adjusted successfully: " & successCount
+                    
+    If skippedSections <> "" Then
+        reportMessage = reportMessage & vbCrLf & vbCrLf & _
+                        "ATTENTION: The following sections were SKIPPED " & _
+                        "(Not A4/Letter size or locked by framed paragraphs):" & vbCrLf & _
+                        "Section(s): " & skippedSections & vbCrLf & vbCrLf & _
+                        "Please inspect and adjust these sections manually if needed."
+        MsgBox reportMessage, vbWarning, "Process Complete with Bypasses"
+    Else
+        MsgBox reportMessage, vbInformation, "Success"
+    End If
+    
+    Exit Sub
+
+CleanUp:
+    Application.ScreenUpdating = True
+    MsgBox "An unexpected error occurred: " & Err.Description, vbCritical, "Execution Fault"
+End Sub
