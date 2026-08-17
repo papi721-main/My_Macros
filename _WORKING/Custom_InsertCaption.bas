@@ -15,5 +15,6 @@ Public Sub InsertCaption()
     If LCase(cleanText) Like "figure*" Or LCase(cleanText) Like "fig*" Then
         ' Uncheck "Keep with next" so the caption isn't pulled away from its image above
         currentPara.KeepWithNext = False
+        currentPara.KeepTogether = False
     End If
 End Sub

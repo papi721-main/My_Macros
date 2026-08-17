@@ -960,7 +960,7 @@ End Sub
 
 Sub Style_9_Apply_Styles_To_Document_V3()
 '=============================================================================
-' Name: Style_8_Apply_Styles_To_Document_V3()
+' Name: Style_9_Apply_Styles_To_Document_V3()
 ' Purpose: Executes a fully consolidated multi-phase document layout optimization:
 '          1. Direct formats all body text to smash unmanaged layout drifts
 '             (SKIPS Sections 1 and 2 entirely).
@@ -968,6 +968,7 @@ Sub Style_9_Apply_Styles_To_Document_V3()
 '          3. Iterates paragraphs sequentially to calculate context-aware list block values
 '             (Before=0, Inside=0, After=6, Intro Tightening=0).
 '          4. Resolves true and "fake" structural heading paths via Outline Levels.
+'          5. Detects Figure/Fig captions and turns off KeepWithNext/KeepTogether.
 '=============================================================================
     Dim doc As Document
     Dim tbl As Table
@@ -979,6 +980,7 @@ Sub Style_9_Apply_Styles_To_Document_V3()
     Dim isLastItem As Boolean
     Dim i As Long
     Dim sec As Section
+    Dim cleanText As String
     
     Set doc = ActiveDocument
     
@@ -1055,7 +1057,7 @@ Sub Style_9_Apply_Styles_To_Document_V3()
     Next i
 
     '-------------------------------------------------------------------------
-    ' CONSOLIDATED SCANNING ENGINE: LIST SPACING & OUTLINE CONVERSIONS
+    ' CONSOLIDATED SCANNING ENGINE: LIST SPACING, OUTLINE CONVERSIONS & CAPTIONS
     '-------------------------------------------------------------------------
     ' Sweeps paragraphs section-by-section starting cleanly at Section 3.
     For i = 3 To doc.Sections.Count
@@ -1145,10 +1147,26 @@ Sub Style_9_Apply_Styles_To_Document_V3()
                         .Font.Reset
                         
                         ' 2. Force apply the true built-in Heading Style based on the level digit
-                        .Style = doc.styles("Heading " & outLvl)
+                        .Style = doc.Styles("Heading " & outLvl)
                     End With
                 End If
                 
+            End If
+
+            '=====================================================================
+            ' SUB-PHASE C: FIGURE CAPTION LAYOUT CONTROL
+            '=====================================================================
+            ' Detects figure captions and prevents them from pulling away from images above
+            cleanText = Trim(para.Range.Text)
+            ' Strip trailing paragraph mark / line feed break characters
+            cleanText = Replace(cleanText, vbCr, "")
+            cleanText = Replace(cleanText, vbLf, "")
+            cleanText = Trim(cleanText)
+
+            If LCase(cleanText) Like "figure*" Or LCase(cleanText) Like "fig*" Then
+                ' Uncheck "Keep with next" and "Keep lines together" so the caption isn't pulled away from its image above
+                para.KeepWithNext = False
+                para.KeepTogether = False
             End If
             
         Next para
@@ -1157,7 +1175,7 @@ Sub Style_9_Apply_Styles_To_Document_V3()
 CleanUp:
     ' Restore standard application window rendering
     Application.ScreenUpdating = True
-    MsgBox "Document styles applied and list spaces manually balanced successfully (Sections 1 & 2 skipped)!", vbInformation, "Process Complete"
+    MsgBox "Document styles applied, list spaces balanced, and figure captions updated successfully (Sections 1 & 2 skipped)!", vbInformation, "Process Complete"
     Exit Sub
 
 ErrorHandler:
