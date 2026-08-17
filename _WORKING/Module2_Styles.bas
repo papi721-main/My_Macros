@@ -202,7 +202,7 @@ Sub Style_4_Adjust_Styles()
 ' Name: Style_4_Adjust_Styles
 ' Purpose: Explicitly configures and standardizes core body styles (Normal,
 '          Normal (Web), Body Text, etc.), Heading styles (1 through 4),
-'          and the Caption style.
+'          Caption style, and Hyperlinks (idle and visited).
 '          Establishes layout baselines, clears rogue tab stops, strips out
 '          any legacy/manual paragraph borders, and ensures clean text geometries.
 ' COMPATIBILITY: Microsoft Word 2007 and newer (Word Layout Engine)
@@ -212,6 +212,7 @@ Sub Style_4_Adjust_Styles()
     Dim doc As Document
     Dim normalStyleNames As Variant
     Dim headingNames As Variant
+    Dim linkStyleNames As Variant
     Dim i As Long
     Dim stName As Variant
     
@@ -241,7 +242,7 @@ Sub Style_4_Adjust_Styles()
     For Each stName In normalStyleNames
         ' Temporary error bypass in case a specific variant style does not exist in the document
         On Error Resume Next
-        With doc.styles(stName)
+        With doc.Styles(stName)
             .AutomaticallyUpdate = False
             With .Font
                 ' Basic Font Properties
@@ -291,7 +292,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 2. HEADING 1 (Primary Document Sections - All Caps & Left-Aligned)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 1")
+    With doc.Styles("Heading 1")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -337,7 +338,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 3. HEADING 2 (Sub-sections - Left-Aligned & Bound to Following Text)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 2")
+    With doc.Styles("Heading 2")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -382,7 +383,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 4. HEADING 3 (Sub-sub-sections)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 3")
+    With doc.Styles("Heading 3")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -427,7 +428,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 5. HEADING 4 (Deep Hierarchy Details)
     '-------------------------------------------------------------------------
-    With doc.styles("Heading 4")
+    With doc.Styles("Heading 4")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -472,7 +473,7 @@ Sub Style_4_Adjust_Styles()
     '-------------------------------------------------------------------------
     ' 6. CAPTION STYLE (The style for captioning tables, figures, and other media)
     '-------------------------------------------------------------------------
-    With doc.styles("Caption")
+    With doc.Styles("Caption")
         .BaseStyle = "Normal"
         .NextParagraphStyle = "Normal"
         .AutomaticallyUpdate = False
@@ -524,7 +525,7 @@ Sub Style_4_Adjust_Styles()
     headingNames = Array("Heading 1", "Heading 2", "Heading 3", "Heading 4")
     
     For i = LBound(headingNames) To UBound(headingNames)
-        With doc.styles(headingNames(i)).Font
+        With doc.Styles(headingNames(i)).Font
             ' ACTIVE CONFIGURATION: Apply custom hex color #182C52 natively
             '.Color = RGB(24, 44, 82)
             
@@ -532,6 +533,22 @@ Sub Style_4_Adjust_Styles()
             .Color = wdColorAutomatic
         End With
     Next i
+
+    '-------------------------------------------------------------------------
+    ' 8. HYPERLINK STYLES PASS (Standardizes Idle & Visited/Pressed Links)
+    '-------------------------------------------------------------------------
+    ' "Hyperlink" = Unvisited / Idle link style
+    ' "FollowedHyperlink" = Visited / Pressed link style
+    linkStyleNames = Array("Hyperlink", "FollowedHyperlink")
+    
+    For Each stName In linkStyleNames
+        On Error Resume Next
+        With doc.Styles(stName).Font
+            .Color = RGB(5, 99, 193)    ' Sets custom hex color #0563C1
+            .Underline = wdUnderlineSingle
+        End With
+        On Error GoTo ErrorHandler
+    Next stName
 
 CleanUp:
     ' Re-enable visual environment screen updates
