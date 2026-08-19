@@ -160,6 +160,8 @@ Sub Lists_2_Build_Multi_Levels_List_for_List_Of_Volumes()
 ' Purpose: Generates a dedicated list schema specialized for complex reports and
 '          multi-volume indexes. Applies custom labels (e.g., Vol-I:, Vol-I-A:)
 '          and standardizes deep nesting levels using clean Arabic indicators.
+' Updates: Bolds Level 1 and Level 2 list numbers and applies 1.5 line spacing
+'          with 0pt space before/after across the selected list block.
 '=============================================================================
     Dim doc As Document
     Dim LT As ListTemplate
@@ -181,6 +183,7 @@ Sub Lists_2_Build_Multi_Levels_List_for_List_Of_Volumes()
         .TextPosition = InchesToPoints(0.6)
         .TabPosition = InchesToPoints(0.6)
         .StartAt = 1
+        .Font.Bold = True                    ' Enforces bold formatting on Level 1 prefix
         .LinkedStyle = ""                   ' Disconnected from structural heading styles
     End With
     
@@ -195,6 +198,7 @@ Sub Lists_2_Build_Multi_Levels_List_for_List_Of_Volumes()
         .TabPosition = InchesToPoints(1.4)
         .ResetOnHigher = 1
         .StartAt = 1
+        .Font.Bold = True                    ' Enforces bold formatting on Level 2 prefix
         .LinkedStyle = ""
     End With
     
@@ -237,6 +241,13 @@ Sub Lists_2_Build_Multi_Levels_List_for_List_Of_Volumes()
         ContinuePreviousList:=False, _
         ApplyTo:=wdListApplyToWholeList, _
         DefaultListBehavior:=wdWord10ListBehavior
+        
+    ' Apply 1.5 line spacing and strip before/after spacing across selected list block
+    With Selection.ParagraphFormat
+        .LineSpacingRule = wdLineSpace1pt5
+        .SpaceBefore = 0
+        .SpaceAfter = 0
+    End With
         
     Application.ScreenUpdating = True
 End Sub
