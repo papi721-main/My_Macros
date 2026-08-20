@@ -202,17 +202,18 @@ Sub Lists_2_Build_Multi_Levels_List_for_List_Of_Volumes()
         .LinkedStyle = ""
     End With
     
-    ' --- LEVEL 3 (Chapter / Segment Node: e.g., "1)") ---
+    ' --- LEVEL 3 (Chapter / Segment Node: e.g., "Part-A:", "Part-B", ... etc.) ---
     With LT.ListLevels(3)
-        .NumberFormat = "%3)"
+        .NumberFormat = "Part-%3"
         .TrailingCharacter = wdTrailingSpace
-        .NumberStyle = wdListNumberStyleArabic
-        .NumberPosition = InchesToPoints(1.4)
+        .NumberStyle = wdListNumberStyleUppercaseLetter
+        .NumberPosition = InchesToPoints(0.5)
         .Alignment = wdListLevelAlignLeft
         .TextPosition = InchesToPoints(1.7)
         .TabPosition = InchesToPoints(1.7)
         .ResetOnHigher = 2
         .StartAt = 1
+        .Font.Bold = True                    ' Enforces bold formatting on Level 2 prefix
         .LinkedStyle = ""
     End With
     
