@@ -133,3 +133,125 @@ ErrorHandler:
     Set xlApp = Nothing
 End Sub
 
+Sub Misc_22_Add_Thousand_Separators_To_Numbers_In_Selection()
+'=============================================================================
+' Name: Misc_22_Add_Thousand_Separators_To_Numbers_In_Selection()
+' Purpose: Adds thousand separators to numbers in the current selection,
+'          including selected table cells, while preserving decimal places.
+'=============================================================================
+    Dim rng As Range
+    Dim numRng As Range
+    Dim i As Long
+    Dim startPos As Long
+    Dim endPos As Long
+    Dim txt As String
+    Dim ch As String
+    Dim numText As String
+    Dim cleanNum As String
+    Dim formattedNum As String
+    Dim decimalPos As Long
+    Dim decimalPlaces As Long
+    Dim originalEnd As Long
+    
+    ' Guardrail: Require an actual selection
+    If Selection.Range.Start = Selection.Range.End Then
+        MsgBox "Please select the text or table cells you want to format.", _
+               vbExclamation, "No Selection"
+        Exit Sub
+    End If
+    
+    Set rng = Selection.Range.Duplicate
+    
+    Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
+    
+    '-------------------------------------------------------------------------
+    ' SCAN SELECTION FROM END TO START
+    '-------------------------------------------------------------------------
+    ' Working backwards prevents inserted commas from shifting the positions
+    ' of numbers that have not yet been processed.
+    i = rng.End - 1
+    
+    Do While i >= rng.Start
+        
+        Set numRng = ActiveDocument.Range(i, i + 1)
+        ch = numRng.text
+        
+        ' Detect the end of a numeric sequence
+        If ch Like "[0-9]" Then
+            
+            endPos = i + 1
+            startPos = i
+            
+            ' Move backward through digits, commas, and decimal points
+            Do While startPos > rng.Start
+                
+                Set numRng = ActiveDocument.Range(startPos - 1, startPos)
+                ch = numRng.text
+                
+                If ch Like "[0-9]" Or ch = "," Or ch = "." Then
+                    startPos = startPos - 1
+                Else
+                    Exit Do
+                End If
+                
+            Loop
+            
+            Set numRng = ActiveDocument.Range(startPos, endPos)
+            numText = numRng.text
+            
+            ' Remove existing thousand separators
+            cleanNum = Replace(numText, ",", "")
+            
+            If IsNumeric(cleanNum) Then
+                
+                ' Determine number of decimal places
+                decimalPos = InStr(cleanNum, ".")
+                
+                If decimalPos > 0 Then
+                    
+                    decimalPlaces = Len(cleanNum) - decimalPos
+                    
+                    formattedNum = Format( _
+                        CDbl(cleanNum), _
+                        "#,##0." & String(decimalPlaces, "0") _
+                    )
+                    
+                Else
+                    
+                    formattedNum = Format(CDbl(cleanNum), "#,##0")
+                    
+                End If
+                
+                ' Replace only when a change is required
+                If formattedNum <> numText Then
+                    numRng.text = formattedNum
+                End If
+                
+            End If
+            
+            ' Continue scanning before the number just processed
+            i = startPos - 1
+            
+        Else
+            
+            i = i - 1
+            
+        End If
+        
+    Loop
+    
+CleanUp:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Thousand separators applied successfully.", _
+           vbInformation, "Formatting Complete"
+    
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Error " & Err.Number & ": " & Err.Description, _
+           vbCritical, "Number Formatting Error"
+End Sub
