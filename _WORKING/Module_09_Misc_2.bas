@@ -2214,9 +2214,9 @@ Sub Misc_30_Format_Selected_Tables()
 '=============================================================================
 ' Name: Misc_30_Format_Selected_Tables()
 ' Purpose: Formats all tables contained within the current selection.
-'          Applies AutoFit to contents, enables full borders, formats and
-'          shades the header row, repeats it across pages, prevents row splits,
-'          and aligns all cell contents to the top.
+'          Applies AutoFit, full borders, header shading, repeating headers,
+'          compact cell margins, top vertical alignment, controlled paragraph
+'          indents, and removes table text from the document outline hierarchy.
 '
 '-----------------------------------------------------------------------------
 ' TABLE FORMATTING APPLIED
@@ -2226,26 +2226,41 @@ Sub Misc_30_Format_Selected_Tables()
 ' ---------------------------------------------------------------------------
 ' Column Width               AutoFit to Contents
 ' Outer Borders              Single Line
-' Inner Horizontal Borders   Single Line
-' Inner Vertical Borders     Single Line
+' Inner Borders              Single Line
 ' First Row                  Bold
-' First Row Shading          #DDD9C3
+' First Row Shading          Controlled by headerRowColor
 ' First Row Repeat           Enabled
 ' Row Splitting              Disabled
-' Vertical Alignment         Top (0)
+' Vertical Alignment         Top
+' Top / Bottom Padding       0"
+' Left / Right Padding       0.05"
+' Normal Paragraph Indent    0"
+' List Paragraph Indent      0.25"
+' Table Outline Levels       Reset to Body Text
 '
 ' NOTE:
-' The macro works when one or more tables are selected, or when the cursor is
-' positioned inside a single table.
+' Existing list numbering and bullet structures are retained.
+' Paragraphs with Heading/Outline Levels 1-9 inside tables are changed to
+' wdOutlineLevelBodyText so they do not appear accidentally in the TOC.
 '=============================================================================
     Dim tbl As Table
     Dim cel As Cell
-    Dim headerColor As Long
+    Dim para As Paragraph
+    
+    Dim headerRowColor As Long
+    
+    Dim tableCount As Long
+    Dim rowCount As Long
+    Dim cellCount As Long
+    Dim paraCount As Long
+    Dim listParaCount As Long
+    Dim outlineResetCount As Long
     
     '-------------------------------------------------------------------------
-    ' HEADER COLOR
+    ' CENTRAL TABLE SETTINGS
     '-------------------------------------------------------------------------
-    headerColor = RGB(221, 217, 195)      ' #DDD9C3
+    ' Change this value later to modify the header row color.
+    headerRowColor = RGB(221, 217, 195)     ' #DDD9C3
     
     '-------------------------------------------------------------------------
     ' GUARDRAIL: REQUIRE AT LEAST ONE TABLE
@@ -2265,6 +2280,10 @@ Sub Misc_30_Format_Selected_Tables()
     '-------------------------------------------------------------------------
     For Each tbl In Selection.Tables
         
+        tableCount = tableCount + 1
+        rowCount = rowCount + tbl.Rows.Count
+        cellCount = cellCount + tbl.Range.Cells.Count
+        
         With tbl
             
             ' Auto-fit columns based on cell contents
@@ -2272,6 +2291,12 @@ Sub Misc_30_Format_Selected_Tables()
             
             ' Prevent rows from splitting across pages
             .Rows.AllowBreakAcrossPages = False
+            
+            ' Apply compact cell margins
+            .TopPadding = InchesToPoints(0)
+            .BottomPadding = InchesToPoints(0)
+            .LeftPadding = InchesToPoints(0.05)
+            .RightPadding = InchesToPoints(0.05)
             
             ' Enable and standardize all table borders
             .Borders.Enable = True
@@ -2284,11 +2309,57 @@ Sub Misc_30_Format_Selected_Tables()
             .Borders(wdBorderVertical).LineStyle = wdLineStyleSingle
             
             '-------------------------------------------------------------
-            ' VERTICAL ALIGNMENT
+            ' CELL ALIGNMENT, INDENTS & OUTLINE CLEANUP
             '-------------------------------------------------------------
-            ' Align all cell contents to the top for a compact layout.
             For Each cel In .Range.Cells
-                cel.VerticalAlignment = 0
+                
+                ' Align all cell contents to the top
+                cel.VerticalAlignment = wdCellAlignVerticalTop
+                
+                For Each para In cel.Range.Paragraphs
+                    
+                    paraCount = paraCount + 1
+                    
+                    '-----------------------------------------------------
+                    ' OUTLINE LEVEL PROTECTION
+                    '-----------------------------------------------------
+                    ' Any Heading/Outline Level 1-9 inside a table is
+                    ' demoted structurally to Body Text so it cannot enter
+                    ' the document TOC.
+                    If para.OutlineLevel >= wdOutlineLevel1 And _
+                       para.OutlineLevel <= wdOutlineLevel9 Then
+                        
+                        para.OutlineLevel = wdOutlineLevelBodyText
+                        outlineResetCount = outlineResetCount + 1
+                        
+                    End If
+                    
+                    '-----------------------------------------------------
+                    ' PARAGRAPH INDENTS
+                    '-----------------------------------------------------
+                    With para.Format
+                        
+                        .RightIndent = 0
+                        
+                        ' Lists retain their numbering/bullets and receive
+                        ' a controlled 0.25" left indent.
+                        If para.Range.ListFormat.ListType <> _
+                           wdListNoNumbering Then
+                            
+                            .LeftIndent = InchesToPoints(0.25)
+                            listParaCount = listParaCount + 1
+                            
+                        Else
+                            
+                            .LeftIndent = 0
+                            .FirstLineIndent = 0
+                            
+                        End If
+                        
+                    End With
+                    
+                Next para
+                
             Next cel
             
             '-------------------------------------------------------------
@@ -2305,7 +2376,7 @@ Sub Misc_30_Format_Selected_Tables()
                 ' Apply custom header shading
                 .Shading.Texture = wdTextureNone
                 .Shading.ForegroundPatternColor = wdColorAutomatic
-                .Shading.BackgroundPatternColor = headerColor
+                .Shading.BackgroundPatternColor = headerRowColor
                 
             End With
             
@@ -2315,6 +2386,16 @@ Sub Misc_30_Format_Selected_Tables()
 
 CleanUp:
     Application.ScreenUpdating = True
+    
+    MsgBox "Table formatting completed successfully." & vbCrLf & vbCrLf & _
+           "Tables formatted: " & tableCount & vbCrLf & _
+           "Rows processed: " & rowCount & vbCrLf & _
+           "Cells processed: " & cellCount & vbCrLf & _
+           "Paragraphs processed: " & paraCount & vbCrLf & _
+           "List paragraphs adjusted: " & listParaCount & vbCrLf & _
+           "Outline levels reset: " & outlineResetCount, _
+           vbInformation, "Table Formatting Summary"
+    
     Exit Sub
 
 ErrorHandler:
