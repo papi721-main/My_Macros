@@ -663,53 +663,219 @@ End Sub
 Sub Style_2_Del_Unused_Styles_Optimized()
 '=============================================================================
 ' Name: Style_2_Del_Unused_Styles_Optimized
-' Purpose: Checks all non-built-in custom styles, double-checks headers, footers,
-'          and text blocks via structural ranges, and purges empty styles.
+' Purpose: Quickly finds and removes unused custom styles across all document
+'          story ranges while preserving all built-in Microsoft Word styles.
+'
+'-----------------------------------------------------------------------------
+' SETTINGS
+'-----------------------------------------------------------------------------
+' dryRun = False   -> Actually deletes unused custom styles
+' dryRun = True    -> Reports what WOULD be deleted without modifying document
+'
+' SEARCH SCOPE:
+' Main document, headers, footers, footnotes, endnotes, text frames, etc.
+'
+' FINAL SUMMARY:
+'   - Custom styles deleted / would be deleted
+'   - Built-in styles deleted
+'   - Custom styles remaining
+'   - Built-in styles remaining
+'
+' NOTE:
+' Built-in styles are always protected, so Built-in Styles Deleted = 0.
 '=============================================================================
     Dim doc As Document
     Dim sty As Style
+    Dim story As Range
+    Dim storyRng As Range
+    Dim findRng As Range
+    
     Dim i As Long
     Dim pass As Integer
     
+    Dim deletedCustomCount As Long
+    Dim deletedBuiltInCount As Long
+    Dim remainingCustomCount As Long
+    Dim remainingBuiltInCount As Long
+    
+    Dim styleUsed As Boolean
+    Dim reportText As String
+    
+    Dim dryRun As Boolean
+    
     Set doc = ActiveDocument
+    
+    '-------------------------------------------------------------------------
+    ' USER SETTING
+    '-------------------------------------------------------------------------
+    dryRun = False
+    
     Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
     
-    ' Skip system errors to prevent locking on protected custom template styles
-    On Error Resume Next
-    
-    ' Executes 2 distinct passes to cleanly prune parent-child style dependency tracks
+    '-------------------------------------------------------------------------
+    ' TWO-PASS CLEANUP
+    '-------------------------------------------------------------------------
+    ' A second pass can remove styles that were previously retained because
+    ' another custom style depended on them.
     For pass = 1 To 2
-        ' Reverse loop ensures index order remains stable as items are deleted
-        For i = doc.styles.Count To 1 Step -1
-            Set sty = doc.styles(i)
+        
+        For i = doc.Styles.Count To 1 Step -1
             
-            ' Rule 1: Never target standard built-in Microsoft application styles
-            If Not sty.BuiltIn Then
+            Set sty = Nothing
+            
+            On Error Resume Next
+            Set sty = doc.Styles(i)
+            Err.Clear
+            On Error GoTo ErrorHandler
+            
+            If Not sty Is Nothing Then
                 
-                ' Rule 2: Evaluate if Word registers the style as fundamentally dead
-                If Not sty.InUse Then
-                    sty.Delete
-                Else
-                    ' Rule 3: Deep check if style is hiding in headers, footers, or shapes
-                    With doc.Content.Find
-                        .ClearFormatting
-                        .Style = sty.NameLocal
-                        .Execute FindText:="", Format:=True, Wrap:=wdFindStop
+                '-------------------------------------------------------------
+                ' BUILT-IN STYLES ARE ALWAYS PROTECTED
+                '-------------------------------------------------------------
+                If Not sty.BuiltIn Then
+                    
+                    styleUsed = False
+                    
+                    '---------------------------------------------------------
+                    ' RULE 1: Trust Word when it reports the style as unused.
+                    '---------------------------------------------------------
+                    If Not sty.InUse Then
                         
-                        ' If registered "InUse" but zero structural nodes exist, safe to delete
-                        If Not .found Then
+                        styleUsed = False
+                        
+                    Else
+                        
+                        '-----------------------------------------------------
+                        ' RULE 2: Deep search all story ranges.
+                        '-----------------------------------------------------
+                        For Each story In doc.StoryRanges
+                            
+                            Set storyRng = story
+                            
+                            Do While Not storyRng Is Nothing
+                                
+                                Set findRng = storyRng.Duplicate
+                                
+                                On Error Resume Next
+                                
+                                With findRng.Find
+                                    .ClearFormatting
+                                    .Replacement.ClearFormatting
+                                    .Text = ""
+                                    .Style = sty
+                                    .Forward = True
+                                    .Wrap = wdFindStop
+                                    .Format = True
+                                End With
+                                
+                                If findRng.Find.Execute Then
+                                    styleUsed = True
+                                End If
+                                
+                                Err.Clear
+                                On Error GoTo ErrorHandler
+                                
+                                If styleUsed Then Exit Do
+                                
+                                Set storyRng = storyRng.NextStoryRange
+                                
+                            Loop
+                            
+                            If styleUsed Then Exit For
+                            
+                        Next story
+                        
+                    End If
+                    
+                    '---------------------------------------------------------
+                    ' DELETE OR COUNT UNUSED CUSTOM STYLE
+                    '---------------------------------------------------------
+                    If Not styleUsed Then
+                        
+                        If dryRun Then
+                            
+                            deletedCustomCount = deletedCustomCount + 1
+                            
+                        Else
+                            
+                            On Error Resume Next
+                            Err.Clear
+                            
                             sty.Delete
+                            
+                            If Err.Number = 0 Then
+                                deletedCustomCount = deletedCustomCount + 1
+                            End If
+                            
+                            Err.Clear
+                            On Error GoTo ErrorHandler
+                            
                         End If
-                    End With
+                        
+                    End If
+                    
                 End If
                 
             End If
+            
         Next i
+        
     Next pass
-    On Error GoTo 0
+    
+    '-------------------------------------------------------------------------
+    ' COUNT ALL STYLES REMAINING
+    '-------------------------------------------------------------------------
+    For Each sty In doc.Styles
+        
+        If sty.BuiltIn Then
+            remainingBuiltInCount = remainingBuiltInCount + 1
+        Else
+            remainingCustomCount = remainingCustomCount + 1
+        End If
+        
+    Next sty
+    
+    ' Built-in styles are never targeted by this macro
+    deletedBuiltInCount = 0
     
     Application.ScreenUpdating = True
-    MsgBox "Unused custom styles cleaned up successfully!", vbInformation, "Clean Up Complete"
+    
+    '-------------------------------------------------------------------------
+    ' BUILD FINAL SUMMARY
+    '-------------------------------------------------------------------------
+    If dryRun Then
+        
+        reportText = _
+            "Style cleanup dry run completed." & vbCrLf & vbCrLf & _
+            "Custom styles to be deleted: " & deletedCustomCount & vbCrLf & _
+            "Built-in styles to be deleted: " & deletedBuiltInCount & vbCrLf & _
+            "Custom styles remaining: " & remainingCustomCount & vbCrLf & _
+            "Built-in styles remaining: " & remainingBuiltInCount
+        
+        MsgBox reportText, vbInformation, "Dry Run Complete"
+        
+    Else
+        
+        reportText = _
+            "Style cleanup completed successfully." & vbCrLf & vbCrLf & _
+            "Custom styles deleted: " & deletedCustomCount & vbCrLf & _
+            "Built-in styles deleted: " & deletedBuiltInCount & vbCrLf & _
+            "Custom styles remaining: " & remainingCustomCount & vbCrLf & _
+            "Built-in styles remaining: " & remainingBuiltInCount
+        
+        MsgBox reportText, vbInformation, "Clean Up Complete"
+        
+    End If
+    
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Error " & Err.Number & ": " & Err.Description, _
+           vbCritical, "Style Cleanup Error"
 End Sub
 
 Sub Style_3_Reset_BuiltIn_Style_Names()
