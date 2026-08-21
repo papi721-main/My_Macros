@@ -4,102 +4,660 @@
 
 Sub Style_1_Clean_Styles_Comprehensive()
 '=============================================================================
-' Name: Style_1_Clean_Styles_Comprehensive
-' Purpose: Evaluates custom non-standard text styles, uses pattern matching
-'          to group rogue iterations/typos, remaps content blocks to target
-'          core styles, and destroys the duplicate fragments.
+' Name: Style_1_Clean_Styles_Comprehensive()
+' Purpose: Removes custom styles from a general Word document while preserving
+'          their visible formatting, list structures, tables, and equations.
+'
+'-----------------------------------------------------------------------------
+' CLEANING STRATEGY
+'-----------------------------------------------------------------------------
+'
+' Custom Style Type     Replacement             Preserved
+' ---------------------------------------------------------------------------
+' Heading-like Para.    Heading 1-9             Formatting + hierarchy
+' Other Paragraph       Normal                  Font + paragraph formatting
+' List Paragraph        Normal / Heading        List + formatting
+' Character             Default Paragraph Font  Character formatting
+' Table                 Table Normal            Table/cell formatting
+' Equations             Unchanged               Completely skipped
+'
+' Built-in Word styles are never deleted.
 '=============================================================================
     Dim doc As Document
     Dim sty As Style
+    Dim para As Paragraph
+    Dim prevPara As Paragraph
+    Dim tbl As Table
+    Dim cel As Cell
+    Dim cellPara As Paragraph
+    Dim story As Range
+    Dim storyRng As Range
+    Dim searchRng As Range
+    
     Dim i As Long
-    Dim targetStyle As String
     Dim currentName As String
+    Dim currentStyleName As String
+    Dim targetStyle As Long
     Dim headingNum As String
+    Dim headingPos As Long
+    Dim storyEnd As Long
+    
+    Dim stylesRemoved As Long
+    Dim stylesRemaining As Long
+    
+    '-------------------------------------------------------------------------
+    ' LIST PRESERVATION STORAGE
+    '-------------------------------------------------------------------------
+    Dim hasList As Boolean
+    Dim savedListTemplate As ListTemplate
+    Dim savedListLevel As Long
+    Dim continuePreviousList As Boolean
+    
+    '-------------------------------------------------------------------------
+    ' FONT FORMATTING STORAGE
+    '-------------------------------------------------------------------------
+    Dim fName As Variant
+    Dim fSize As Variant
+    Dim fBold As Variant
+    Dim fItalic As Variant
+    Dim fUnderline As Variant
+    Dim fColor As Variant
+    Dim fAllCaps As Variant
+    Dim fSmallCaps As Variant
+    Dim fStrike As Variant
+    Dim fDoubleStrike As Variant
+    Dim fSuper As Variant
+    Dim fSub As Variant
+    Dim fHidden As Variant
+    Dim fSpacing As Variant
+    Dim fScaling As Variant
+    
+    '-------------------------------------------------------------------------
+    ' PARAGRAPH FORMATTING STORAGE
+    '-------------------------------------------------------------------------
+    Dim pBefore As Single
+    Dim pAfter As Single
+    Dim pLineRule As Long
+    Dim pLineSpacing As Single
+    Dim pAlignment As Long
+    Dim pFirstIndent As Single
+    Dim pLeftIndent As Single
+    Dim pRightIndent As Single
+    Dim pKeepNext As Long
+    Dim pKeepTogether As Long
+    Dim pWidow As Long
+    Dim pPageBreak As Long
     
     Set doc = ActiveDocument
+    
     Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
     
-    ' Suppress interruptions during aggressive text search/remapping passes
-    On Error Resume Next
-    
-    ' Parse backwards to safely decouple styles from the collection tree
-    For i = doc.styles.Count To 1 Step -1
-        Set sty = doc.styles(i)
+    '=========================================================================
+    ' PROCESS CUSTOM STYLES BACKWARDS THROUGH THE STYLE COLLECTION
+    '=========================================================================
+    ' Backward processing allows custom styles to be deleted safely without
+    ' disturbing the remaining collection indexes.
+    For i = doc.Styles.Count To 1 Step -1
         
-        ' Target exclusively non-native/propagated style tracks
-        If Not sty.BuiltIn Then
-            currentName = sty.NameLocal
-            targetStyle = ""
+        Set sty = Nothing
+        
+        On Error Resume Next
+        Set sty = doc.Styles(i)
+        Err.Clear
+        On Error GoTo ErrorHandler
+        
+        If Not sty Is Nothing Then
             
-            '-----------------------------------------------------------------
-            ' ADVANCED PATTERN MATCHING LOGIC
-            '-----------------------------------------------------------------
-            ' Pattern 1: Catch custom Heading style string fragments (e.g., "Heading 1,_H1")
-            If InStr(1, currentName, "Heading ", vbTextCompare) > 0 Then
-                ' Grab the target hierarchy depth digit immediately tracking "Heading "
-                headingNum = Mid(currentName, InStr(1, currentName, "Heading ", vbTextCompare) + 8, 1)
+            ' Built-in Word styles are always protected
+            If Not sty.BuiltIn Then
                 
-                ' Ensure parsing character evaluates to a standard layout digit (1-9)
-                If IsNumeric(headingNum) And headingNum <> "0" Then
-                    Select Case headingNum
-                        Case "1": targetStyle = "Heading 1"
-                        Case "2": targetStyle = "Heading 2"
-                        Case "3": targetStyle = "Heading 3"
-                        Case "4": targetStyle = "Heading 4"
-                        Case Else: targetStyle = "Heading " & headingNum
-                    End Select
-                End If
+                currentName = sty.NameLocal
                 
-            ' Pattern 2: Catch normal style drift variations, typos, and systemic anomalies
-            ElseIf InStr(1, currentName, "Norm", vbTextCompare) > 0 Or _
-                   InStr(1, currentName, "Nomr", vbTextCompare) > 0 Or _
-                   InStr(1, currentName, "hvr", vbTextCompare) > 0 Then
-                   
-                targetStyle = "Normal"
-            End If
-            
-            '-----------------------------------------------------------------
-            ' FALLBACK ATTRIBUTE VALIDATION
-            '-----------------------------------------------------------------
-            ' Confirms targeted master style actively exists prior to executing text swap
-            If targetStyle <> "" Then
-                Dim testSty As Style
-                Set testSty = doc.styles(targetStyle)
-                
-                ' Fallback safely to base name split array if structural alias blocks match
-                If testSty Is Nothing And InStr(1, targetStyle, "_H", vbTextCompare) > 0 Then
-                    targetStyle = Split(targetStyle, ",")(0)
-                End If
-            End If
-            
-            '-----------------------------------------------------------------
-            ' CONTENT REMAPPING AND STYLE DESTRUCTION
-            '-----------------------------------------------------------------
-            ' Execute find/replace across entire layout to absorb and scrub the style fragment
-            If targetStyle <> "" And currentName <> targetStyle Then
-                
-                With doc.Content.Find
-                    .ClearFormatting
-                    .Style = currentName
-                    .replacement.ClearFormatting
-                    .replacement.Style = doc.styles(targetStyle)
-                    .replacement.text = "^&"            ' Native code to preserve existing text unchanged
+                '=================================================================
+                ' PHASE 1: CUSTOM PARAGRAPH / LINKED STYLES
+                '=================================================================
+                If sty.Type = wdStyleTypeParagraph Or _
+                   sty.Type = wdStyleTypeLinked Then
                     
-                    .Execute Replace:=wdReplaceAll
-                End With
+                    '-------------------------------------------------------------
+                    ' Determine destination style.
+                    '
+                    ' Any custom style containing "Heading 1" through "Heading 9"
+                    ' is mapped to the corresponding built-in Word heading.
+                    ' Everything else maps to Normal.
+                    '-------------------------------------------------------------
+                    targetStyle = wdStyleNormal
+                    
+                    headingPos = InStr(1, currentName, "Heading ", vbTextCompare)
+                    
+                    If headingPos > 0 Then
+                        
+                        headingNum = Mid$(currentName, headingPos + 8, 1)
+                        
+                        If IsNumeric(headingNum) Then
+                            
+                            Select Case CLng(headingNum)
+                                Case 1: targetStyle = wdStyleHeading1
+                                Case 2: targetStyle = wdStyleHeading2
+                                Case 3: targetStyle = wdStyleHeading3
+                                Case 4: targetStyle = wdStyleHeading4
+                                Case 5: targetStyle = wdStyleHeading5
+                                Case 6: targetStyle = wdStyleHeading6
+                                Case 7: targetStyle = wdStyleHeading7
+                                Case 8: targetStyle = wdStyleHeading8
+                                Case 9: targetStyle = wdStyleHeading9
+                            End Select
+                            
+                        End If
+                        
+                    End If
+                    
+                    '-------------------------------------------------------------
+                    ' Search paragraphs throughout all Word story ranges.
+                    '-------------------------------------------------------------
+                    For Each story In doc.StoryRanges
+                        
+                        Set storyRng = story
+                        
+                        Do While Not storyRng Is Nothing
+                            
+                            For Each para In storyRng.Paragraphs
+                                
+                                currentStyleName = ""
+                                
+                                On Error Resume Next
+                                currentStyleName = para.Style.NameLocal
+                                Err.Clear
+                                On Error GoTo ErrorHandler
+                                
+                                If StrComp(currentStyleName, currentName, _
+                                           vbTextCompare) = 0 Then
+                                    
+                                    '-----------------------------------------
+                                    ' EQUATION GUARDRAIL
+                                    '-----------------------------------------
+                                    If para.Range.OMaths.Count > 0 Then
+                                        GoTo SkipParagraph
+                                    End If
+                                    
+                                    '-----------------------------------------
+                                    ' Preserve list structure.
+                                    '-----------------------------------------
+                                    hasList = False
+                                    Set savedListTemplate = Nothing
+                                    continuePreviousList = False
+                                    
+                                    On Error Resume Next
+                                    
+                                    If para.Range.ListFormat.ListType <> _
+                                       wdListNoNumbering Then
+                                        
+                                        hasList = True
+                                        
+                                        savedListLevel = _
+                                            para.Range.ListFormat.ListLevelNumber
+                                        
+                                        Set savedListTemplate = _
+                                            para.Range.ListFormat.ListTemplate
+                                        
+                                        Set prevPara = para.Previous
+                                        
+                                        If Not prevPara Is Nothing Then
+                                            
+                                            If prevPara.Range.ListFormat.ListType <> _
+                                               wdListNoNumbering Then
+                                                
+                                                continuePreviousList = True
+                                                
+                                            End If
+                                            
+                                        End If
+                                        
+                                    End If
+                                    
+                                    Err.Clear
+                                    On Error GoTo ErrorHandler
+                                    
+                                    '-----------------------------------------
+                                    ' Capture effective font formatting.
+                                    '-----------------------------------------
+                                    With para.Range.Font
+                                        fName = .Name
+                                        fSize = .Size
+                                        fBold = .Bold
+                                        fItalic = .Italic
+                                        fUnderline = .Underline
+                                        fColor = .Color
+                                        fAllCaps = .AllCaps
+                                        fSmallCaps = .SmallCaps
+                                        fStrike = .StrikeThrough
+                                        fDoubleStrike = .DoubleStrikeThrough
+                                        fSuper = .Superscript
+                                        fSub = .Subscript
+                                        fHidden = .Hidden
+                                        fSpacing = .Spacing
+                                        fScaling = .Scaling
+                                    End With
+                                    
+                                    '-----------------------------------------
+                                    ' Capture paragraph formatting.
+                                    '-----------------------------------------
+                                    With para.Format
+                                        pBefore = .SpaceBefore
+                                        pAfter = .SpaceAfter
+                                        pLineRule = .LineSpacingRule
+                                        pLineSpacing = .LineSpacing
+                                        pAlignment = .Alignment
+                                        pFirstIndent = .FirstLineIndent
+                                        pLeftIndent = .LeftIndent
+                                        pRightIndent = .RightIndent
+                                        pKeepNext = .KeepWithNext
+                                        pKeepTogether = .KeepTogether
+                                        pWidow = .WidowControl
+                                        pPageBreak = .PageBreakBefore
+                                    End With
+                                    
+                                    '-----------------------------------------
+                                    ' Replace custom paragraph style.
+                                    '-----------------------------------------
+                                    para.Style = targetStyle
+                                    
+                                    '-----------------------------------------
+                                    ' Restore list if style conversion removed
+                                    ' bullets or numbering.
+                                    '-----------------------------------------
+                                    If hasList Then
+                                        
+                                        If para.Range.ListFormat.ListType = _
+                                           wdListNoNumbering Then
+                                            
+                                            If Not savedListTemplate Is Nothing Then
+                                                
+                                                On Error Resume Next
+                                                
+                                                para.Range.ListFormat. _
+                                                    ApplyListTemplateWithLevel _
+                                                    ListTemplate:=savedListTemplate, _
+                                                    ContinuePreviousList:=continuePreviousList, _
+                                                    ApplyTo:=wdListApplyToSelection, _
+                                                    DefaultListBehavior:=wdWord10ListBehavior, _
+                                                    ApplyLevel:=savedListLevel
+                                                
+                                                Err.Clear
+                                                On Error GoTo ErrorHandler
+                                                
+                                            End If
+                                            
+                                        End If
+                                        
+                                    End If
+                                    
+                                    '-----------------------------------------
+                                    ' Restore paragraph formatting.
+                                    '-----------------------------------------
+                                    With para.Format
+                                        .SpaceBefore = pBefore
+                                        .SpaceAfter = pAfter
+                                        .LineSpacingRule = pLineRule
+                                        .LineSpacing = pLineSpacing
+                                        .Alignment = pAlignment
+                                        .KeepWithNext = pKeepNext
+                                        .KeepTogether = pKeepTogether
+                                        .WidowControl = pWidow
+                                        .PageBreakBefore = pPageBreak
+                                        
+                                        ' List indentation remains controlled
+                                        ' by the original list definition.
+                                        If Not hasList Then
+                                            .FirstLineIndent = pFirstIndent
+                                            .LeftIndent = pLeftIndent
+                                            .RightIndent = pRightIndent
+                                        End If
+                                        
+                                    End With
+                                    
+                                    '-----------------------------------------
+                                    ' Restore effective font formatting.
+                                    '-----------------------------------------
+                                    With para.Range.Font
+                                        
+                                        If fName <> "" Then .Name = fName
+                                        If fSize <> wdUndefined Then .Size = fSize
+                                        If fBold <> wdUndefined Then .Bold = fBold
+                                        If fItalic <> wdUndefined Then .Italic = fItalic
+                                        
+                                        If fUnderline <> wdUndefined Then _
+                                            .Underline = fUnderline
+                                        
+                                        If fColor <> wdUndefined Then .Color = fColor
+                                        
+                                        If fAllCaps <> wdUndefined Then _
+                                            .AllCaps = fAllCaps
+                                        
+                                        If fSmallCaps <> wdUndefined Then _
+                                            .SmallCaps = fSmallCaps
+                                        
+                                        If fStrike <> wdUndefined Then _
+                                            .StrikeThrough = fStrike
+                                        
+                                        If fDoubleStrike <> wdUndefined Then _
+                                            .DoubleStrikeThrough = fDoubleStrike
+                                        
+                                        If fSuper <> wdUndefined Then _
+                                            .Superscript = fSuper
+                                        
+                                        If fSub <> wdUndefined Then _
+                                            .Subscript = fSub
+                                        
+                                        If fHidden <> wdUndefined Then _
+                                            .Hidden = fHidden
+                                        
+                                        If fSpacing <> wdUndefined Then _
+                                            .Spacing = fSpacing
+                                        
+                                        If fScaling <> wdUndefined Then _
+                                            .Scaling = fScaling
+                                        
+                                    End With
+                                    
+                                End If
+                                
+SkipParagraph:
+                                
+                            Next para
+                            
+                            Set storyRng = storyRng.NextStoryRange
+                            
+                        Loop
+                        
+                    Next story
+                    
+                '=================================================================
+                ' PHASE 2: CUSTOM CHARACTER STYLES
+                '=================================================================
+                ElseIf sty.Type = wdStyleTypeCharacter Then
+                    
+                    For Each story In doc.StoryRanges
+                        
+                        Set storyRng = story
+                        
+                        Do While Not storyRng Is Nothing
+                            
+                            Set searchRng = storyRng.Duplicate
+                            storyEnd = searchRng.End
+                            
+                            With searchRng.Find
+                                .ClearFormatting
+                                .Replacement.ClearFormatting
+                                .Text = ""
+                                .Style = sty
+                                .Forward = True
+                                .Wrap = wdFindStop
+                                .Format = True
+                            End With
+                            
+                            Do While searchRng.Find.Execute
+                                
+                                '---------------------------------------------
+                                ' EQUATION GUARDRAIL
+                                '---------------------------------------------
+                                If searchRng.OMaths.Count > 0 Then
+                                    
+                                    searchRng.Collapse wdCollapseEnd
+                                    searchRng.End = storyEnd
+                                    GoTo ContinueCharacterSearch
+                                    
+                                End If
+                                
+                                '---------------------------------------------
+                                ' Capture current character appearance.
+                                '---------------------------------------------
+                                With searchRng.Font
+                                    fName = .Name
+                                    fSize = .Size
+                                    fBold = .Bold
+                                    fItalic = .Italic
+                                    fUnderline = .Underline
+                                    fColor = .Color
+                                    fAllCaps = .AllCaps
+                                    fSmallCaps = .SmallCaps
+                                    fStrike = .StrikeThrough
+                                    fDoubleStrike = .DoubleStrikeThrough
+                                    fSuper = .Superscript
+                                    fSub = .Subscript
+                                    fHidden = .Hidden
+                                    fSpacing = .Spacing
+                                    fScaling = .Scaling
+                                End With
+                                
+                                '---------------------------------------------
+                                ' Remove custom character style.
+                                '---------------------------------------------
+                                searchRng.Style = wdStyleDefaultParagraphFont
+                                
+                                '---------------------------------------------
+                                ' Restore appearance as direct formatting.
+                                '---------------------------------------------
+                                With searchRng.Font
+                                    
+                                    If fName <> "" Then .Name = fName
+                                    If fSize <> wdUndefined Then .Size = fSize
+                                    If fBold <> wdUndefined Then .Bold = fBold
+                                    If fItalic <> wdUndefined Then .Italic = fItalic
+                                    
+                                    If fUnderline <> wdUndefined Then _
+                                        .Underline = fUnderline
+                                    
+                                    If fColor <> wdUndefined Then .Color = fColor
+                                    
+                                    If fAllCaps <> wdUndefined Then _
+                                        .AllCaps = fAllCaps
+                                    
+                                    If fSmallCaps <> wdUndefined Then _
+                                        .SmallCaps = fSmallCaps
+                                    
+                                    If fStrike <> wdUndefined Then _
+                                        .StrikeThrough = fStrike
+                                    
+                                    If fDoubleStrike <> wdUndefined Then _
+                                        .DoubleStrikeThrough = fDoubleStrike
+                                    
+                                    If fSuper <> wdUndefined Then _
+                                        .Superscript = fSuper
+                                    
+                                    If fSub <> wdUndefined Then _
+                                        .Subscript = fSub
+                                    
+                                    If fHidden <> wdUndefined Then _
+                                        .Hidden = fHidden
+                                    
+                                    If fSpacing <> wdUndefined Then _
+                                        .Spacing = fSpacing
+                                    
+                                    If fScaling <> wdUndefined Then _
+                                        .Scaling = fScaling
+                                    
+                                End With
+                                
+                                searchRng.Collapse wdCollapseEnd
+                                searchRng.End = storyEnd
+                                
+ContinueCharacterSearch:
+                                
+                            Loop
+                            
+                            Set storyRng = storyRng.NextStoryRange
+                            
+                        Loop
+                        
+                    Next story
+                    
+                '=================================================================
+                ' PHASE 3: CUSTOM TABLE STYLES
+                '=================================================================
+                ElseIf sty.Type = wdStyleTypeTable Then
+                    
+                    For Each tbl In doc.Tables
+                        
+                        currentStyleName = ""
+                        
+                        On Error Resume Next
+                        currentStyleName = tbl.Style.NameLocal
+                        Err.Clear
+                        On Error GoTo ErrorHandler
+                        
+                        If StrComp(currentStyleName, currentName, _
+                                   vbTextCompare) = 0 Then
+                            
+                            '---------------------------------------------
+                            ' Preserve cell paragraph/text formatting.
+                            '---------------------------------------------
+                            For Each cel In tbl.Range.Cells
+                                
+                                For Each cellPara In cel.Range.Paragraphs
+                                    
+                                    If cellPara.Range.OMaths.Count > 0 Then
+                                        GoTo SkipCellParagraph
+                                    End If
+                                    
+                                    With cellPara.Format
+                                        pBefore = .SpaceBefore
+                                        pAfter = .SpaceAfter
+                                        pLineRule = .LineSpacingRule
+                                        pLineSpacing = .LineSpacing
+                                        pAlignment = .Alignment
+                                        pFirstIndent = .FirstLineIndent
+                                        pLeftIndent = .LeftIndent
+                                        pRightIndent = .RightIndent
+                                    End With
+                                    
+                                    With cellPara.Range.Font
+                                        fName = .Name
+                                        fSize = .Size
+                                        fBold = .Bold
+                                        fItalic = .Italic
+                                        fUnderline = .Underline
+                                        fColor = .Color
+                                    End With
+                                    
+                                    With cellPara.Format
+                                        .SpaceBefore = pBefore
+                                        .SpaceAfter = pAfter
+                                        .LineSpacingRule = pLineRule
+                                        .LineSpacing = pLineSpacing
+                                        .Alignment = pAlignment
+                                        .FirstLineIndent = pFirstIndent
+                                        .LeftIndent = pLeftIndent
+                                        .RightIndent = pRightIndent
+                                    End With
+                                    
+                                    With cellPara.Range.Font
+                                        
+                                        If fName <> "" Then .Name = fName
+                                        If fSize <> wdUndefined Then .Size = fSize
+                                        If fBold <> wdUndefined Then .Bold = fBold
+                                        If fItalic <> wdUndefined Then .Italic = fItalic
+                                        
+                                        If fUnderline <> wdUndefined Then _
+                                            .Underline = fUnderline
+                                        
+                                        If fColor <> wdUndefined Then .Color = fColor
+                                        
+                                    End With
+                                    
+SkipCellParagraph:
+                                    
+                                Next cellPara
+                                
+                            Next cel
+                            
+                            ' Replace custom table style
+                            On Error Resume Next
+                            tbl.Style = wdStyleTableNormal
+                            Err.Clear
+                            On Error GoTo ErrorHandler
+                            
+                        End If
+                        
+                    Next tbl
+                    
+                '=================================================================
+                ' PHASE 4: CUSTOM LIST STYLES
+                '=================================================================
+                ElseIf sty.Type = wdStyleTypeList Then
+                    
+                    ' List styles are deliberately not force-deleted here.
+                    ' Their numbering may still be referenced by paragraphs.
+                    '
+                    ' Paragraph/list cleanup above removes custom paragraph
+                    ' styling while retaining active ListFormat definitions.
+                    GoTo KeepCustomStyle
+                    
+                End If
                 
-                ' Wipe the cleared duplicate style from memory completely
-                sty.Delete
-                Debug.Print "Successfully merged and deleted: " & currentName
+                '=================================================================
+                ' DELETE CUSTOM STYLE IF IT IS NOW UNUSED
+                '=================================================================
+                On Error Resume Next
+                
+                If Not sty.InUse Then
+                    
+                    sty.Delete
+                    
+                    If Err.Number = 0 Then
+                        stylesRemoved = stylesRemoved + 1
+                    Else
+                        stylesRemaining = stylesRemaining + 1
+                        Err.Clear
+                    End If
+                    
+                Else
+                    
+                    stylesRemaining = stylesRemaining + 1
+                    
+                End If
+                
+                On Error GoTo ErrorHandler
+                
+KeepCustomStyle:
+                
             End If
             
         End If
+        
     Next i
-    
-    On Error GoTo 0
+
+CleanUp:
     Application.ScreenUpdating = True
     
-    MsgBox "Comprehensive style consolidation complete! Your document is fully cleaned.", vbInformation, "Success"
+    If stylesRemaining = 0 Then
+        
+        MsgBox "Comprehensive style cleanup completed successfully." & _
+               vbCrLf & vbCrLf & _
+               stylesRemoved & " custom styles removed." & vbCrLf & _
+               "Formatting, lists, tables, and equations were preserved.", _
+               vbInformation, "Style Cleanup Complete"
+        
+    Else
+        
+        MsgBox "Comprehensive style cleanup completed." & _
+               vbCrLf & vbCrLf & _
+               stylesRemoved & " custom styles removed." & vbCrLf & _
+               stylesRemaining & " custom style(s) remain in use." & _
+               vbCrLf & vbCrLf & _
+               "Equation-dependent and active list styles are intentionally retained.", _
+               vbInformation, "Style Cleanup Complete"
+        
+    End If
+    
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Error " & Err.Number & ": " & Err.Description, _
+           vbCritical, "Comprehensive Style Cleanup Error"
 End Sub
 
 Sub Style_2_Del_Unused_Styles_Optimized()
