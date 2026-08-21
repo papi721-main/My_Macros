@@ -1234,212 +1234,677 @@ End Sub
 Sub Misc_28_Clean_Pandoc_Styles()
 '=============================================================================
 ' Name: Misc_28_Clean_Pandoc_Styles()
-' Purpose: Neutralizes common Pandoc-generated custom styles so they visually
-'          match the document's Normal style without deleting those styles.
+' Purpose: Removes Pandoc-generated custom styles while preserving visible
+'          formatting, list structure, tables, and mathematical equations.
 '
 '-----------------------------------------------------------------------------
-' STYLE CLEANING STRATEGY
+' CLEANING STRATEGY
 '-----------------------------------------------------------------------------
 '
-' Style Type        Action
+' Pandoc Type       Replacement              Preserved
 ' ---------------------------------------------------------------------------
-' Paragraph         Base Style -> Normal; Normal-like font/paragraph formatting
-' Character         Reset to Normal font appearance; remove syntax coloration
-' Table             Apply Normal-like font and paragraph formatting
+' Paragraph         Normal                   Font + paragraph formatting
+' List Paragraph    Normal                   Formatting + list structure
+' Character         Default Paragraph Font   Character formatting
+' Math Content      Unchanged                Entire equation is skipped
+' Table             Table Normal             Existing cell/paragraph formatting
 '
 ' NOTE:
-' Source-code token colors (KeywordTok, StringTok, CommentTok, etc.) are
-' intentionally removed by this macro.
+' Equations are deliberately excluded from style conversion.
+' Styles still required by equation content may remain in the document.
 '=============================================================================
     Dim doc As Document
     Dim sty As Style
+    Dim para As Paragraph
+    Dim prevPara As Paragraph
+    Dim tbl As Table
+    Dim cel As Cell
+    Dim cellPara As Paragraph
+    Dim story As Range
+    Dim storyRng As Range
+    Dim searchRng As Range
     Dim stName As Variant
     
     Dim paragraphStyles As Variant
     Dim characterStyles As Variant
     
-    Dim bodyFontName As String
-    Dim bodyFontSize As Single
+    Dim currentStyleName As String
+    Dim storyEnd As Long
+    Dim stylesRemoved As Long
+    Dim stylesRemaining As Long
+    
+    '-------------------------------------------------------------------------
+    ' LIST PRESERVATION STORAGE
+    '-------------------------------------------------------------------------
+    Dim hasList As Boolean
+    Dim savedListTemplate As ListTemplate
+    Dim savedListLevel As Long
+    Dim continuePreviousList As Boolean
+    
+    '-------------------------------------------------------------------------
+    ' FONT FORMATTING STORAGE
+    '-------------------------------------------------------------------------
+    Dim fName As Variant
+    Dim fSize As Variant
+    Dim fBold As Variant
+    Dim fItalic As Variant
+    Dim fUnderline As Variant
+    Dim fColor As Variant
+    Dim fAllCaps As Variant
+    Dim fSmallCaps As Variant
+    Dim fStrike As Variant
+    Dim fDoubleStrike As Variant
+    Dim fSuper As Variant
+    Dim fSub As Variant
+    Dim fHidden As Variant
+    Dim fSpacing As Variant
+    Dim fScaling As Variant
+    
+    '-------------------------------------------------------------------------
+    ' PARAGRAPH FORMATTING STORAGE
+    '-------------------------------------------------------------------------
+    Dim pBefore As Single
+    Dim pAfter As Single
+    Dim pLineRule As Long
+    Dim pLineSpacing As Single
+    Dim pAlignment As Long
+    Dim pFirstIndent As Single
+    Dim pLeftIndent As Single
+    Dim pRightIndent As Single
+    Dim pKeepNext As Long
+    Dim pKeepTogether As Long
+    Dim pWidow As Long
+    Dim pPageBreak As Long
     
     Set doc = ActiveDocument
-    
-    '-------------------------------------------------------------------------
-    ' CENTRAL NORMAL-TEXT SETTINGS
-    '-------------------------------------------------------------------------
-    bodyFontName = "Calibri"
-    bodyFontSize = 12
     
     Application.ScreenUpdating = False
     On Error GoTo ErrorHandler
     
     '-------------------------------------------------------------------------
-    ' 1. PANDOC PARAGRAPH STYLES
+    ' PANDOC STYLE DEFINITIONS
     '-------------------------------------------------------------------------
-    paragraphStyles = Array( _
-        "Abstract", _
-        "Abstract Title", _
-        "Author", _
-        "Captioned Figure", _
-        "Compact", _
-        "Definition", _
-        "Definition Term", _
-        "Figure", _
-        "First Paragraph", _
-        "Footnote Block Text", _
-        "Image Caption", _
-        "Source Code", _
-        "Table Caption")
+    paragraphStyles = Split( _
+        "Abstract|Abstract Title|Author|Captioned Figure|Compact|" & _
+        "Definition|Definition Term|Figure|First Paragraph|" & _
+        "Footnote Block Text|Image Caption|Source Code|Table Caption", "|")
     
+    characterStyles = Split( _
+        "AlertTok|AnnotationTok|AttributeTok|BaseNTok|BuiltInTok|CharTok|" & _
+        "CommentTok|CommentVarTok|ConstantTok|ControlFlowTok|DataTypeTok|" & _
+        "DecValTok|DocumentationTok|ErrorTok|ExtensionTok|FloatTok|" & _
+        "FunctionTok|ImportTok|InformationTok|KeywordTok|NormalTok|" & _
+        "OperatorTok|OtherTok|PreprocessorTok|RegionMarkerTok|" & _
+        "Section Number|SpecialCharTok|SpecialStringTok|StringTok|" & _
+        "VariableTok|VerbatimStringTok|WarningTok", "|")
+
+    '=========================================================================
+    ' PHASE 1: PANDOC PARAGRAPH STYLES -> NORMAL
+    '=========================================================================
     For Each stName In paragraphStyles
         
+        Set sty = Nothing
+        
         On Error Resume Next
-        Set sty = doc.styles(CStr(stName))
+        Set sty = doc.Styles(CStr(stName))
+        Err.Clear
+        On Error GoTo ErrorHandler
         
         If Not sty Is Nothing Then
             
-            With sty
-                .BaseStyle = "Normal"
-                .NextParagraphStyle = "Normal"
-                .AutomaticallyUpdate = False
+            For Each story In doc.StoryRanges
                 
-                With .Font
-                    .Name = bodyFontName
-                    .Size = bodyFontSize
-                    .Bold = False
-                    .Italic = False
-                    .Color = RGB(36, 36, 36)
-                    .Underline = wdUnderlineNone
-                    .AllCaps = False
-                    .SmallCaps = False
-                    .Outline = False
-                    .Shadow = False
-                    .Emboss = False
-                    .Engrave = False
-                    .Spacing = 0
-                    .Scaling = 100
-                    .Kerning = 0
-                    .Ligatures = wdLigaturesNone
-                    .NumberSpacing = wdNumberSpacingDefault
-                    .NumberForm = wdNumberFormDefault
-                    .StylisticSet = wdStylisticSetDefault
-                    .ContextualAlternates = 0
-                End With
+                Set storyRng = story
                 
-                With .ParagraphFormat
-                    .LineUnitBefore = 0
-                    .LineUnitAfter = 0
-                    .FirstLineIndent = 0
-                    .LeftIndent = 0
-                    .RightIndent = 0
-                    .SpaceBeforeAuto = False
-                    .SpaceAfterAuto = False
-                    .SpaceBefore = 0
-                    .SpaceAfter = 6
-                    .LineSpacingRule = wdLineSpaceMultiple
-                    .LineSpacing = LinesToPoints(1.15)
-                    .Alignment = wdAlignParagraphLeft
-                    .OutlineLevel = wdOutlineLevelBodyText
-                    .WidowControl = True
-                    .KeepWithNext = False
-                    .KeepTogether = False
-                    .PageBreakBefore = False
-                    .TabStops.ClearAll
-                    .Borders.Enable = False
-                End With
+                Do While Not storyRng Is Nothing
+                    
+                    For Each para In storyRng.Paragraphs
+                        
+                        currentStyleName = ""
+                        
+                        On Error Resume Next
+                        currentStyleName = para.Style.NameLocal
+                        Err.Clear
+                        On Error GoTo ErrorHandler
+                        
+                        If StrComp(currentStyleName, CStr(stName), _
+                                   vbTextCompare) = 0 Then
+                            
+                            '-------------------------------------------------
+                            ' EQUATION GUARDRAIL
+                            '-------------------------------------------------
+                            If para.Range.OMaths.Count > 0 Then
+                                GoTo SkipParagraph
+                            End If
+                            
+                            '-------------------------------------------------
+                            ' Preserve list structure.
+                            '-------------------------------------------------
+                            hasList = False
+                            Set savedListTemplate = Nothing
+                            continuePreviousList = False
+                            
+                            On Error Resume Next
+                            
+                            If para.Range.ListFormat.ListType <> _
+                               wdListNoNumbering Then
+                                
+                                hasList = True
+                                
+                                savedListLevel = _
+                                    para.Range.ListFormat.ListLevelNumber
+                                
+                                Set savedListTemplate = _
+                                    para.Range.ListFormat.ListTemplate
+                                
+                                Set prevPara = para.Previous
+                                
+                                If Not prevPara Is Nothing Then
+                                    
+                                    If prevPara.Range.ListFormat.ListType <> _
+                                       wdListNoNumbering Then
+                                        
+                                        continuePreviousList = True
+                                        
+                                    End If
+                                    
+                                End If
+                                
+                            End If
+                            
+                            Err.Clear
+                            On Error GoTo ErrorHandler
+                            
+                            '-------------------------------------------------
+                            ' Capture effective font formatting.
+                            '-------------------------------------------------
+                            With para.Range.Font
+                                fName = .Name
+                                fSize = .Size
+                                fBold = .Bold
+                                fItalic = .Italic
+                                fUnderline = .Underline
+                                fColor = .Color
+                                fAllCaps = .AllCaps
+                                fSmallCaps = .SmallCaps
+                                fStrike = .StrikeThrough
+                                fDoubleStrike = .DoubleStrikeThrough
+                                fSuper = .Superscript
+                                fSub = .Subscript
+                                fHidden = .Hidden
+                                fSpacing = .Spacing
+                                fScaling = .Scaling
+                            End With
+                            
+                            '-------------------------------------------------
+                            ' Capture paragraph formatting.
+                            '-------------------------------------------------
+                            With para.Format
+                                pBefore = .SpaceBefore
+                                pAfter = .SpaceAfter
+                                pLineRule = .LineSpacingRule
+                                pLineSpacing = .LineSpacing
+                                pAlignment = .Alignment
+                                pFirstIndent = .FirstLineIndent
+                                pLeftIndent = .LeftIndent
+                                pRightIndent = .RightIndent
+                                pKeepNext = .KeepWithNext
+                                pKeepTogether = .KeepTogether
+                                pWidow = .WidowControl
+                                pPageBreak = .PageBreakBefore
+                            End With
+                            
+                            '-------------------------------------------------
+                            ' Replace Pandoc style with built-in Normal.
+                            ' Using the built-in constant avoids Style
+                            ' collection lookup Error 5941.
+                            '-------------------------------------------------
+                            para.Style = wdStyleNormal
+                            
+                            '-------------------------------------------------
+                            ' Restore list only if Word removed it.
+                            '-------------------------------------------------
+                            If hasList Then
+                                
+                                If para.Range.ListFormat.ListType = _
+                                   wdListNoNumbering Then
+                                    
+                                    If Not savedListTemplate Is Nothing Then
+                                        
+                                        ' A damaged or unusual Pandoc list
+                                        ' template must not halt the cleanup.
+                                        On Error Resume Next
+                                        
+                                        para.Range.ListFormat. _
+                                            ApplyListTemplateWithLevel _
+                                            ListTemplate:=savedListTemplate, _
+                                            ContinuePreviousList:=continuePreviousList, _
+                                            ApplyTo:=wdListApplyToSelection, _
+                                            DefaultListBehavior:=wdWord10ListBehavior, _
+                                            ApplyLevel:=savedListLevel
+                                        
+                                        Err.Clear
+                                        On Error GoTo ErrorHandler
+                                        
+                                    End If
+                                    
+                                End If
+                                
+                            End If
+                            
+                            '-------------------------------------------------
+                            ' Restore paragraph formatting.
+                            '-------------------------------------------------
+                            With para.Format
+                                .SpaceBefore = pBefore
+                                .SpaceAfter = pAfter
+                                .LineSpacingRule = pLineRule
+                                .LineSpacing = pLineSpacing
+                                .Alignment = pAlignment
+                                .KeepWithNext = pKeepNext
+                                .KeepTogether = pKeepTogether
+                                .WidowControl = pWidow
+                                .PageBreakBefore = pPageBreak
+                                
+                                ' List indentation remains controlled by the
+                                ' list definition rather than direct indents.
+                                If Not hasList Then
+                                    .FirstLineIndent = pFirstIndent
+                                    .LeftIndent = pLeftIndent
+                                    .RightIndent = pRightIndent
+                                End If
+                                
+                            End With
+                            
+                            '-------------------------------------------------
+                            ' Restore effective character formatting.
+                            '-------------------------------------------------
+                            With para.Range.Font
+                                
+                                If fName <> "" Then .Name = fName
+                                If fSize <> wdUndefined Then .Size = fSize
+                                If fBold <> wdUndefined Then .Bold = fBold
+                                If fItalic <> wdUndefined Then .Italic = fItalic
+                                
+                                If fUnderline <> wdUndefined Then _
+                                    .Underline = fUnderline
+                                
+                                If fColor <> wdUndefined Then .Color = fColor
+                                
+                                If fAllCaps <> wdUndefined Then _
+                                    .AllCaps = fAllCaps
+                                
+                                If fSmallCaps <> wdUndefined Then _
+                                    .SmallCaps = fSmallCaps
+                                
+                                If fStrike <> wdUndefined Then _
+                                    .StrikeThrough = fStrike
+                                
+                                If fDoubleStrike <> wdUndefined Then _
+                                    .DoubleStrikeThrough = fDoubleStrike
+                                
+                                If fSuper <> wdUndefined Then _
+                                    .Superscript = fSuper
+                                
+                                If fSub <> wdUndefined Then _
+                                    .Subscript = fSub
+                                
+                                If fHidden <> wdUndefined Then _
+                                    .Hidden = fHidden
+                                
+                                If fSpacing <> wdUndefined Then _
+                                    .Spacing = fSpacing
+                                
+                                If fScaling <> wdUndefined Then _
+                                    .Scaling = fScaling
+                                
+                            End With
+                            
+                        End If
+                        
+SkipParagraph:
+                        
+                    Next para
+                    
+                    Set storyRng = storyRng.NextStoryRange
+                    
+                Loop
                 
-            End With
+            Next story
+            
+            '-----------------------------------------------------------------
+            ' Attempt deletion. Equation-dependent styles are allowed to stay.
+            '-----------------------------------------------------------------
+            On Error Resume Next
+            
+            If Not sty.InUse Then
+                
+                sty.Delete
+                
+                If Err.Number = 0 Then
+                    stylesRemoved = stylesRemoved + 1
+                Else
+                    stylesRemaining = stylesRemaining + 1
+                    Err.Clear
+                End If
+                
+            Else
+                
+                stylesRemaining = stylesRemaining + 1
+                
+            End If
+            
+            On Error GoTo ErrorHandler
             
         End If
         
-        Set sty = Nothing
-        On Error GoTo ErrorHandler
-        
     Next stName
 
-    '-------------------------------------------------------------------------
-    ' 2. PANDOC CHARACTER / SYNTAX TOKEN STYLES
-    '-------------------------------------------------------------------------
-    characterStyles = Array("AlertTok", "AnnotationTok", "AttributeTok", "BaseNTok", "BuiltInTok", "CharTok", "CommentTok", "CommentVarTok", "ConstantTok", "ControlFlowTok", "DataTypeTok", "DecValTok", "DocumentationTok", "ErrorTok", "ExtensionTok", "FloatTok", "FunctionTok", "ImportTok", "InformationTok", "KeywordTok", "NormalTok", "OperatorTok", "OtherTok", "PreprocessorTok", "RegionMarkerTok", "Section Number", "SpecialCharTok", "SpecialStringTok", "StringTok", "VariableTok", "VerbatimStringTok", "WarningTok")
-    
+    '=========================================================================
+    ' PHASE 2: PANDOC CHARACTER STYLES
+    '=========================================================================
     For Each stName In characterStyles
         
+        Set sty = Nothing
+        
         On Error Resume Next
-        Set sty = doc.styles(CStr(stName))
+        Set sty = doc.Styles(CStr(stName))
+        Err.Clear
+        On Error GoTo ErrorHandler
         
         If Not sty Is Nothing Then
             
-            With sty
-                .AutomaticallyUpdate = False
+            For Each story In doc.StoryRanges
                 
-                With .Font
-                    .Name = bodyFontName
-                    .Size = bodyFontSize
-                    .Bold = False
-                    .Italic = False
-                    .Color = RGB(36, 36, 36)
-                    .Underline = wdUnderlineNone
-                    .AllCaps = False
-                    .SmallCaps = False
-                    .Outline = False
-                    .Shadow = False
-                    .Emboss = False
-                    .Engrave = False
-                    .Spacing = 0
-                    .Scaling = 100
-                    .Kerning = 0
-                    .Ligatures = wdLigaturesNone
-                    .NumberSpacing = wdNumberSpacingDefault
-                    .NumberForm = wdNumberFormDefault
-                    .StylisticSet = wdStylisticSetDefault
-                    .ContextualAlternates = 0
-                End With
+                Set storyRng = story
                 
-            End With
+                Do While Not storyRng Is Nothing
+                    
+                    Set searchRng = storyRng.Duplicate
+                    storyEnd = searchRng.End
+                    
+                    With searchRng.Find
+                        .ClearFormatting
+                        .Replacement.ClearFormatting
+                        .Text = ""
+                        .Style = sty
+                        .Forward = True
+                        .Wrap = wdFindStop
+                        .Format = True
+                    End With
+                    
+                    Do While searchRng.Find.Execute
+                        
+                        '-----------------------------------------------------
+                        ' EQUATION GUARDRAIL
+                        '-----------------------------------------------------
+                        If searchRng.OMaths.Count > 0 Then
+                            
+                            searchRng.Collapse wdCollapseEnd
+                            searchRng.End = storyEnd
+                            GoTo ContinueCharacterSearch
+                            
+                        End If
+                        
+                        '-----------------------------------------------------
+                        ' Capture character appearance.
+                        '-----------------------------------------------------
+                        With searchRng.Font
+                            fName = .Name
+                            fSize = .Size
+                            fBold = .Bold
+                            fItalic = .Italic
+                            fUnderline = .Underline
+                            fColor = .Color
+                            fAllCaps = .AllCaps
+                            fSmallCaps = .SmallCaps
+                            fStrike = .StrikeThrough
+                            fDoubleStrike = .DoubleStrikeThrough
+                            fSuper = .Superscript
+                            fSub = .Subscript
+                            fHidden = .Hidden
+                            fSpacing = .Spacing
+                            fScaling = .Scaling
+                        End With
+                        
+                        '-----------------------------------------------------
+                        ' Remove custom character style.
+                        '
+                        ' Assign the built-in constant directly instead of
+                        ' retrieving it from doc.Styles().
+                        '-----------------------------------------------------
+                        searchRng.Style = wdStyleDefaultParagraphFont
+                        
+                        '-----------------------------------------------------
+                        ' Restore character appearance directly.
+                        '-----------------------------------------------------
+                        With searchRng.Font
+                            
+                            If fName <> "" Then .Name = fName
+                            If fSize <> wdUndefined Then .Size = fSize
+                            If fBold <> wdUndefined Then .Bold = fBold
+                            If fItalic <> wdUndefined Then .Italic = fItalic
+                            
+                            If fUnderline <> wdUndefined Then _
+                                .Underline = fUnderline
+                            
+                            If fColor <> wdUndefined Then .Color = fColor
+                            
+                            If fAllCaps <> wdUndefined Then _
+                                .AllCaps = fAllCaps
+                            
+                            If fSmallCaps <> wdUndefined Then _
+                                .SmallCaps = fSmallCaps
+                            
+                            If fStrike <> wdUndefined Then _
+                                .StrikeThrough = fStrike
+                            
+                            If fDoubleStrike <> wdUndefined Then _
+                                .DoubleStrikeThrough = fDoubleStrike
+                            
+                            If fSuper <> wdUndefined Then _
+                                .Superscript = fSuper
+                            
+                            If fSub <> wdUndefined Then _
+                                .Subscript = fSub
+                            
+                            If fHidden <> wdUndefined Then _
+                                .Hidden = fHidden
+                            
+                            If fSpacing <> wdUndefined Then _
+                                .Spacing = fSpacing
+                            
+                            If fScaling <> wdUndefined Then _
+                                .Scaling = fScaling
+                            
+                        End With
+                        
+                        searchRng.Collapse wdCollapseEnd
+                        searchRng.End = storyEnd
+                        
+ContinueCharacterSearch:
+                        
+                    Loop
+                    
+                    Set storyRng = storyRng.NextStoryRange
+                    
+                Loop
+                
+            Next story
+            
+            '-----------------------------------------------------------------
+            ' Delete if no longer used.
+            '-----------------------------------------------------------------
+            On Error Resume Next
+            
+            If Not sty.InUse Then
+                
+                sty.Delete
+                
+                If Err.Number = 0 Then
+                    stylesRemoved = stylesRemoved + 1
+                Else
+                    stylesRemaining = stylesRemaining + 1
+                    Err.Clear
+                End If
+                
+            Else
+                
+                stylesRemaining = stylesRemaining + 1
+                
+            End If
+            
+            On Error GoTo ErrorHandler
             
         End If
         
-        Set sty = Nothing
-        On Error GoTo ErrorHandler
-        
     Next stName
 
-    '-------------------------------------------------------------------------
-    ' 3. PANDOC TABLE STYLE
-    '-------------------------------------------------------------------------
+    '=========================================================================
+    ' PHASE 3: PANDOC TABLE STYLE -> TABLE NORMAL
+    '=========================================================================
+    Set sty = Nothing
+    
     On Error Resume Next
-    Set sty = doc.styles("Table")
+    Set sty = doc.Styles("Table")
+    Err.Clear
+    On Error GoTo ErrorHandler
     
     If Not sty Is Nothing Then
         
-        With sty
+        For Each tbl In doc.Tables
             
-            With .Font
-                .Name = bodyFontName
-                .Size = bodyFontSize
-                .Bold = False
-                .Italic = False
-                .Color = RGB(36, 36, 36)
-            End With
+            currentStyleName = ""
             
-            With .ParagraphFormat
-                .SpaceBefore = 0
-                .SpaceAfter = 0
-                .LineSpacingRule = wdLineSpaceMultiple
-                .LineSpacing = LinesToPoints(1.15)
-            End With
+            On Error Resume Next
+            currentStyleName = tbl.Style.NameLocal
+            Err.Clear
+            On Error GoTo ErrorHandler
             
-        End With
+            If StrComp(currentStyleName, "Table", vbTextCompare) = 0 Then
+                
+                '-------------------------------------------------------------
+                ' Preserve cell paragraph/text formatting.
+                '-------------------------------------------------------------
+                For Each cel In tbl.Range.Cells
+                    
+                    For Each cellPara In cel.Range.Paragraphs
+                        
+                        ' Skip equation-containing paragraphs entirely
+                        If cellPara.Range.OMaths.Count > 0 Then
+                            GoTo SkipCellParagraph
+                        End If
+                        
+                        With cellPara.Format
+                            pBefore = .SpaceBefore
+                            pAfter = .SpaceAfter
+                            pLineRule = .LineSpacingRule
+                            pLineSpacing = .LineSpacing
+                            pAlignment = .Alignment
+                            pFirstIndent = .FirstLineIndent
+                            pLeftIndent = .LeftIndent
+                            pRightIndent = .RightIndent
+                        End With
+                        
+                        With cellPara.Range.Font
+                            fName = .Name
+                            fSize = .Size
+                            fBold = .Bold
+                            fItalic = .Italic
+                            fUnderline = .Underline
+                            fColor = .Color
+                        End With
+                        
+                        With cellPara.Format
+                            .SpaceBefore = pBefore
+                            .SpaceAfter = pAfter
+                            .LineSpacingRule = pLineRule
+                            .LineSpacing = pLineSpacing
+                            .Alignment = pAlignment
+                            .FirstLineIndent = pFirstIndent
+                            .LeftIndent = pLeftIndent
+                            .RightIndent = pRightIndent
+                        End With
+                        
+                        With cellPara.Range.Font
+                            
+                            If fName <> "" Then .Name = fName
+                            If fSize <> wdUndefined Then .Size = fSize
+                            If fBold <> wdUndefined Then .Bold = fBold
+                            If fItalic <> wdUndefined Then .Italic = fItalic
+                            
+                            If fUnderline <> wdUndefined Then _
+                                .Underline = fUnderline
+                            
+                            If fColor <> wdUndefined Then .Color = fColor
+                            
+                        End With
+                        
+SkipCellParagraph:
+                        
+                    Next cellPara
+                    
+                Next cel
+                
+                '-------------------------------------------------------------
+                ' Replace custom Pandoc table style using the built-in
+                ' constant directly.
+                '-------------------------------------------------------------
+                On Error Resume Next
+                tbl.Style = wdStyleTableNormal
+                Err.Clear
+                On Error GoTo ErrorHandler
+                
+            End If
+            
+        Next tbl
+        
+        '---------------------------------------------------------------------
+        ' Delete Pandoc Table style if it is no longer used.
+        '---------------------------------------------------------------------
+        On Error Resume Next
+        
+        If Not sty.InUse Then
+            
+            sty.Delete
+            
+            If Err.Number = 0 Then
+                stylesRemoved = stylesRemoved + 1
+            Else
+                stylesRemaining = stylesRemaining + 1
+                Err.Clear
+            End If
+            
+        Else
+            
+            stylesRemaining = stylesRemaining + 1
+            
+        End If
+        
+        On Error GoTo ErrorHandler
         
     End If
-    
-    Set sty = Nothing
-    On Error GoTo ErrorHandler
 
 CleanUp:
     Application.ScreenUpdating = True
     
-    MsgBox "Pandoc-generated styles cleaned successfully.", _
-           vbInformation, "Pandoc Style Cleanup"
+    If stylesRemaining = 0 Then
+        
+        MsgBox "Pandoc styles cleaned successfully." & vbCrLf & vbCrLf & _
+               stylesRemoved & " custom styles removed." & vbCrLf & _
+               "Lists, tables, and equations were preserved.", _
+               vbInformation, "Pandoc Style Cleanup"
+        
+    Else
+        
+        MsgBox "Pandoc style cleanup completed." & vbCrLf & vbCrLf & _
+               stylesRemoved & " custom styles removed." & vbCrLf & _
+               stylesRemaining & " style(s) remain in use." & vbCrLf & vbCrLf & _
+               "Equation-dependent styles are intentionally retained.", _
+               vbInformation, "Pandoc Style Cleanup"
+        
+    End If
+    
     Exit Sub
 
 ErrorHandler:
@@ -1447,7 +1912,6 @@ ErrorHandler:
     
     MsgBox "Error " & Err.Number & ": " & Err.Description, _
            vbCritical, "Pandoc Style Cleanup Error"
-    Resume CleanUp
 End Sub
 
 Sub Misc_29_Apply_Obsidian_Styles_To_Document()
