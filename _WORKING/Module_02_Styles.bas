@@ -1853,3 +1853,569 @@ ErrorHandler:
     MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical, "Style Preferences Error"
     Resume CleanUp
 End Sub
+
+Sub Style_11_Del_Unused_Styles_Improved()
+'=============================================================================
+' Name: Style_11_Del_Unused_Styles_Improved()
+' Purpose: Efficiently removes unused non-built-in custom styles using a
+'          staged cleanup strategy, then optionally exports deleted-style
+'          information to Microsoft Excel.
+'
+'-----------------------------------------------------------------------------
+' OPTIMIZATION STRATEGY
+'-----------------------------------------------------------------------------
+'
+' Stage                         Action
+' ---------------------------------------------------------------------------
+' Pass 1 - Fast Cleanup         Delete styles where .InUse = False
+' Pass 2 - Deep Validation      Check only remaining "InUse" custom styles
+'                               and stop searching after the first real use
+' Pass 3 - Dependency Cleanup   Quickly retry styles made unused by deletion
+'
+' This avoids counting every occurrence of every style and avoids performing
+' expensive story-range searches unless Word claims the style is still active.
+'
+'-----------------------------------------------------------------------------
+' FINAL SUMMARY
+'-----------------------------------------------------------------------------
+'
+' Reports:
+'   - Custom styles deleted
+'   - Custom styles remaining
+'   - Built-in styles remaining
+'
+' Optional Excel report:
+'   - Style Name
+'   - Style Type
+'   - Deleted On Pass
+'
+'-----------------------------------------------------------------------------
+' PRIVATE HELPERS USED BY THIS PARENT SUB
+'-----------------------------------------------------------------------------
+'
+' Helper_Style_11_IsStyleActuallyUsed
+'   Returns True immediately upon finding the first actual use of a style.
+'
+' Helper_Style_11_GetReadableStyleType
+'   Converts WdStyleType into a readable description.
+'
+' Helper_Style_11_ExportDeletedStylesToExcel
+'   Creates the optional Excel deletion report.
+'=============================================================================
+    Dim doc As Document
+    Dim sty As Style
+    
+    Dim deletedNames As Collection
+    Dim deletedTypes As Collection
+    Dim deletedPasses As Collection
+    
+    Dim i As Long
+    Dim deletedCount As Long
+    Dim remainingCustomCount As Long
+    Dim builtInCount As Long
+    
+    Dim styleName As String
+    Dim styleTypeName As String
+    
+    Dim response As VbMsgBoxResult
+    Dim reportText As String
+    
+    Set doc = ActiveDocument
+    
+    Set deletedNames = New Collection
+    Set deletedTypes = New Collection
+    Set deletedPasses = New Collection
+    
+    Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
+    
+    '=========================================================================
+    ' PASS 1: FAST CLEANUP USING WORD'S InUse FLAG
+    '=========================================================================
+    ' This pass performs no Find operations. Styles Word already identifies
+    ' as unused are deleted immediately.
+    For i = doc.Styles.Count To 1 Step -1
+        
+        Set sty = Nothing
+        
+        On Error Resume Next
+        Set sty = doc.Styles(i)
+        Err.Clear
+        On Error GoTo ErrorHandler
+        
+        If Not sty Is Nothing Then
+            
+            If Not sty.BuiltIn Then
+                
+                If Not sty.InUse Then
+                    
+                    styleName = sty.NameLocal
+                    styleTypeName = _
+                        Helper_Style_11_GetReadableStyleType(sty)
+                    
+                    On Error Resume Next
+                    Err.Clear
+                    
+                    sty.Delete
+                    
+                    If Err.Number = 0 Then
+                        
+                        deletedCount = deletedCount + 1
+                        deletedNames.Add styleName
+                        deletedTypes.Add styleTypeName
+                        deletedPasses.Add 1
+                        
+                    End If
+                    
+                    Err.Clear
+                    On Error GoTo ErrorHandler
+                    
+                End If
+                
+            End If
+            
+        End If
+        
+    Next i
+    
+    '=========================================================================
+    ' PASS 2: DEEP VALIDATION OF REMAINING CUSTOM STYLES
+    '=========================================================================
+    ' Word's .InUse property may remain True because of template/dependency
+    ' references even when no document content actually uses the style.
+    '
+    ' Only those styles require the more expensive structural search.
+    For i = doc.Styles.Count To 1 Step -1
+        
+        Set sty = Nothing
+        
+        On Error Resume Next
+        Set sty = doc.Styles(i)
+        Err.Clear
+        On Error GoTo ErrorHandler
+        
+        If Not sty Is Nothing Then
+            
+            If Not sty.BuiltIn Then
+                
+                If sty.InUse Then
+                    
+                    If Not Helper_Style_11_IsStyleActuallyUsed(doc, sty) Then
+                        
+                        styleName = sty.NameLocal
+                        styleTypeName = _
+                            Helper_Style_11_GetReadableStyleType(sty)
+                        
+                        On Error Resume Next
+                        Err.Clear
+                        
+                        sty.Delete
+                        
+                        If Err.Number = 0 Then
+                            
+                            deletedCount = deletedCount + 1
+                            deletedNames.Add styleName
+                            deletedTypes.Add styleTypeName
+                            deletedPasses.Add 2
+                            
+                        End If
+                        
+                        Err.Clear
+                        On Error GoTo ErrorHandler
+                        
+                    End If
+                    
+                End If
+                
+            End If
+            
+        End If
+        
+    Next i
+    
+    '=========================================================================
+    ' PASS 3: FAST DEPENDENCY CLEANUP
+    '=========================================================================
+    ' Removing custom child styles can make parent custom styles newly unused.
+    ' This final pass uses only the fast .InUse check.
+    For i = doc.Styles.Count To 1 Step -1
+        
+        Set sty = Nothing
+        
+        On Error Resume Next
+        Set sty = doc.Styles(i)
+        Err.Clear
+        On Error GoTo ErrorHandler
+        
+        If Not sty Is Nothing Then
+            
+            If Not sty.BuiltIn Then
+                
+                If Not sty.InUse Then
+                    
+                    styleName = sty.NameLocal
+                    styleTypeName = _
+                        Helper_Style_11_GetReadableStyleType(sty)
+                    
+                    On Error Resume Next
+                    Err.Clear
+                    
+                    sty.Delete
+                    
+                    If Err.Number = 0 Then
+                        
+                        deletedCount = deletedCount + 1
+                        deletedNames.Add styleName
+                        deletedTypes.Add styleTypeName
+                        deletedPasses.Add 3
+                        
+                    End If
+                    
+                    Err.Clear
+                    On Error GoTo ErrorHandler
+                    
+                End If
+                
+            End If
+            
+        End If
+        
+    Next i
+    
+    '=========================================================================
+    ' COUNT REMAINING STYLES
+    '=========================================================================
+    For Each sty In doc.Styles
+        
+        If sty.BuiltIn Then
+            builtInCount = builtInCount + 1
+        Else
+            remainingCustomCount = remainingCustomCount + 1
+        End If
+        
+    Next sty
+    
+    Application.ScreenUpdating = True
+    
+    '=========================================================================
+    ' FINAL SUMMARY
+    '=========================================================================
+    reportText = _
+        "Style cleanup completed successfully." & vbCrLf & vbCrLf & _
+        "Custom styles deleted: " & deletedCount & vbCrLf & _
+        "Custom styles remaining: " & remainingCustomCount & vbCrLf & _
+        "Built-in styles: " & builtInCount
+    
+    If deletedCount > 0 Then
+        
+        reportText = reportText & vbCrLf & vbCrLf & _
+                     "Would you like to view the deleted-style details in Excel?"
+        
+        response = MsgBox( _
+            reportText, _
+            vbYesNo + vbInformation, _
+            "Style Cleanup Summary")
+        
+        If response = vbYes Then
+            
+            Helper_Style_11_ExportDeletedStylesToExcel _
+                deletedNames, _
+                deletedTypes, _
+                deletedPasses
+            
+        End If
+        
+    Else
+        
+        MsgBox reportText & vbCrLf & vbCrLf & _
+               "No unused custom styles were found.", _
+               vbInformation, _
+               "Style Cleanup Summary"
+        
+    End If
+    
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Error " & Err.Number & ": " & Err.Description, _
+           vbCritical, "Style Cleanup Error"
+End Sub
+
+
+Private Function Helper_Style_11_IsStyleActuallyUsed( _
+    ByVal doc As Document, _
+    ByVal sty As Style) As Boolean
+'=============================================================================
+' Parent Sub: Style_11_Del_Unused_Styles_Improved()
+'
+' Purpose: Determines whether a custom style has at least one actual use in
+'          the document.
+'
+' OPTIMIZATION:
+' Stops immediately after finding the first occurrence. It does not count
+' every use of the style.
+'
+' Search Scope:
+'   - Main document
+'   - Headers / Footers
+'   - Footnotes / Endnotes
+'   - Accessible text frames and other Word story ranges
+'   - Tables, when evaluating a table style
+'
+' Returns:
+'   True  = At least one actual use was found
+'   False = No actual document use was found
+'
+' Safety:
+' If Word cannot reliably evaluate an unusual style type, the function returns
+' True so the style is retained rather than risking deletion of an active style.
+'=============================================================================
+    Dim story As Range
+    Dim storyRng As Range
+    Dim findRng As Range
+    Dim tbl As Table
+    
+    Dim tableStyleName As String
+    
+    On Error GoTo SafetyExit
+    
+    '-------------------------------------------------------------------------
+    ' TABLE STYLES
+    '-------------------------------------------------------------------------
+    If sty.Type = wdStyleTypeTable Then
+        
+        For Each story In doc.StoryRanges
+            
+            Set storyRng = story
+            
+            Do While Not storyRng Is Nothing
+                
+                For Each tbl In storyRng.Tables
+                    
+                    tableStyleName = ""
+                    
+                    On Error Resume Next
+                    tableStyleName = tbl.Style.NameLocal
+                    Err.Clear
+                    On Error GoTo SafetyExit
+                    
+                    If StrComp( _
+                        tableStyleName, _
+                        sty.NameLocal, _
+                        vbTextCompare) = 0 Then
+                        
+                        Helper_Style_11_IsStyleActuallyUsed = True
+                        Exit Function
+                        
+                    End If
+                    
+                Next tbl
+                
+                Set storyRng = storyRng.NextStoryRange
+                
+            Loop
+            
+        Next story
+        
+    '-------------------------------------------------------------------------
+    ' LIST STYLES
+    '-------------------------------------------------------------------------
+    ' List styles are structurally different from ordinary paragraph and
+    ' character styles. If Word already reports one as InUse, retain it rather
+    ' than risking damage to active numbering structures.
+    ElseIf sty.Type = wdStyleTypeList Then
+        
+        Helper_Style_11_IsStyleActuallyUsed = True
+        Exit Function
+        
+    '-------------------------------------------------------------------------
+    ' PARAGRAPH / CHARACTER / LINKED STYLES
+    '-------------------------------------------------------------------------
+    Else
+        
+        For Each story In doc.StoryRanges
+            
+            Set storyRng = story
+            
+            Do While Not storyRng Is Nothing
+                
+                Set findRng = storyRng.Duplicate
+                
+                On Error Resume Next
+                Err.Clear
+                
+                With findRng.Find
+                    .ClearFormatting
+                    .Replacement.ClearFormatting
+                    .Text = ""
+                    .Style = sty
+                    .Forward = True
+                    .Wrap = wdFindStop
+                    .Format = True
+                End With
+                
+                If Err.Number <> 0 Then
+                    Err.Clear
+                    On Error GoTo SafetyExit
+                    GoTo NextStoryRange
+                End If
+                
+                If findRng.Find.Execute Then
+                    
+                    Helper_Style_11_IsStyleActuallyUsed = True
+                    Exit Function
+                    
+                End If
+                
+                On Error GoTo SafetyExit
+                
+NextStoryRange:
+                Set storyRng = storyRng.NextStoryRange
+                
+            Loop
+            
+        Next story
+        
+    End If
+    
+    Helper_Style_11_IsStyleActuallyUsed = False
+    Exit Function
+
+SafetyExit:
+    ' Conservative fallback: retain styles Word cannot evaluate safely.
+    Helper_Style_11_IsStyleActuallyUsed = True
+End Function
+
+
+Private Function Helper_Style_11_GetReadableStyleType( _
+    ByVal sty As Style) As String
+'=============================================================================
+' Parent Sub: Style_11_Del_Unused_Styles_Improved()
+'
+' Purpose: Converts Word's WdStyleType value into a readable description for
+'          the optional Excel deletion report.
+'=============================================================================
+    Select Case sty.Type
+        
+        Case wdStyleTypeParagraph
+            Helper_Style_11_GetReadableStyleType = "Paragraph"
+            
+        Case wdStyleTypeCharacter
+            Helper_Style_11_GetReadableStyleType = "Character"
+            
+        Case wdStyleTypeTable
+            Helper_Style_11_GetReadableStyleType = "Table"
+            
+        Case wdStyleTypeList
+            Helper_Style_11_GetReadableStyleType = "List"
+            
+        Case wdStyleTypeLinked
+            Helper_Style_11_GetReadableStyleType = "Linked"
+            
+        Case Else
+            Helper_Style_11_GetReadableStyleType = "Other"
+            
+    End Select
+End Function
+
+
+Private Sub Helper_Style_11_ExportDeletedStylesToExcel( _
+    ByVal deletedNames As Collection, _
+    ByVal deletedTypes As Collection, _
+    ByVal deletedPasses As Collection)
+'=============================================================================
+' Parent Sub: Style_11_Del_Unused_Styles_Improved()
+'
+' Purpose: Creates an Excel workbook containing details of every custom style
+'          successfully removed by the parent cleanup macro.
+'
+'-----------------------------------------------------------------------------
+' EXCEL REPORT
+'-----------------------------------------------------------------------------
+'
+' Column              Description
+' ---------------------------------------------------------------------------
+' Style Name          Deleted custom style name
+' Style Type          Paragraph, Character, Table, List, etc.
+' Deleted On Pass     Cleanup stage on which deletion succeeded
+'
+' Pass 1 = Word directly reported the style unused.
+' Pass 2 = Word reported InUse, but no actual content use was found.
+' Pass 3 = Style became unused after dependency cleanup.
+'
+' Uses late binding, so no Excel reference must be enabled manually.
+'=============================================================================
+    Dim xlApp As Object
+    Dim xlWB As Object
+    Dim xlWS As Object
+    
+    Dim i As Long
+    Dim lastRow As Long
+    
+    On Error GoTo ErrorHandler
+    
+    '-------------------------------------------------------------------------
+    ' CREATE EXCEL REPORT
+    '-------------------------------------------------------------------------
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlWB = xlApp.Workbooks.Add
+    Set xlWS = xlWB.Worksheets(1)
+    
+    xlApp.Visible = True
+    xlWS.Name = "Deleted Styles"
+    
+    '-------------------------------------------------------------------------
+    ' REPORT HEADINGS
+    '-------------------------------------------------------------------------
+    xlWS.Cells(1, 1).Value = "Style Name"
+    xlWS.Cells(1, 2).Value = "Style Type"
+    xlWS.Cells(1, 3).Value = "Deleted On Pass"
+    
+    With xlWS.Range("A1:C1")
+        .Font.Bold = True
+        .HorizontalAlignment = -4108       ' xlCenter
+    End With
+    
+    '-------------------------------------------------------------------------
+    ' WRITE DELETED STYLE INFORMATION
+    '-------------------------------------------------------------------------
+    For i = 1 To deletedNames.Count
+        
+        xlWS.Cells(i + 1, 1).Value = deletedNames(i)
+        xlWS.Cells(i + 1, 2).Value = deletedTypes(i)
+        xlWS.Cells(i + 1, 3).Value = deletedPasses(i)
+        
+    Next i
+    
+    lastRow = deletedNames.Count + 1
+    
+    '-------------------------------------------------------------------------
+    ' FORMAT EXCEL REPORT
+    '-------------------------------------------------------------------------
+    With xlWS
+        
+        .Columns("A:C").AutoFit
+        .Range("A1:C" & lastRow).AutoFilter
+        
+        With .Range("A1:C" & lastRow).Borders
+            .LineStyle = 1
+            .Weight = 2
+        End With
+        
+    End With
+    
+    ' Freeze report heading
+    xlWS.Activate
+    xlApp.ActiveWindow.SplitRow = 1
+    xlApp.ActiveWindow.FreezePanes = True
+    
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "The deleted-style Excel report could not be created." & _
+           vbCrLf & vbCrLf & _
+           "Error " & Err.Number & ": " & Err.Description, _
+           vbExclamation, "Excel Report Error"
+End Sub
