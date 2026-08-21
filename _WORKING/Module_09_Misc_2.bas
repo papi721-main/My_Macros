@@ -2210,3 +2210,116 @@ ErrorHandler:
            vbCritical, "Formatting Error"
 End Sub
 
+Sub Misc_30_Format_Selected_Tables()
+'=============================================================================
+' Name: Misc_30_Format_Selected_Tables()
+' Purpose: Formats all tables contained within the current selection.
+'          Applies AutoFit to contents, enables full borders, formats and
+'          shades the header row, repeats it across pages, prevents row splits,
+'          and aligns all cell contents to the top.
+'
+'-----------------------------------------------------------------------------
+' TABLE FORMATTING APPLIED
+'-----------------------------------------------------------------------------
+'
+' Setting                    Applied Value
+' ---------------------------------------------------------------------------
+' Column Width               AutoFit to Contents
+' Outer Borders              Single Line
+' Inner Horizontal Borders   Single Line
+' Inner Vertical Borders     Single Line
+' First Row                  Bold
+' First Row Shading          #DDD9C3
+' First Row Repeat           Enabled
+' Row Splitting              Disabled
+' Vertical Alignment         Top (0)
+'
+' NOTE:
+' The macro works when one or more tables are selected, or when the cursor is
+' positioned inside a single table.
+'=============================================================================
+    Dim tbl As Table
+    Dim cel As Cell
+    Dim headerColor As Long
+    
+    '-------------------------------------------------------------------------
+    ' HEADER COLOR
+    '-------------------------------------------------------------------------
+    headerColor = RGB(221, 217, 195)      ' #DDD9C3
+    
+    '-------------------------------------------------------------------------
+    ' GUARDRAIL: REQUIRE AT LEAST ONE TABLE
+    '-------------------------------------------------------------------------
+    If Selection.Tables.Count = 0 Then
+        MsgBox "No table found in the current selection. Please select text " & _
+               "containing a table or click inside one.", _
+               vbExclamation, "No Table Selected"
+        Exit Sub
+    End If
+    
+    Application.ScreenUpdating = False
+    On Error GoTo ErrorHandler
+    
+    '-------------------------------------------------------------------------
+    ' FORMAT ALL TABLES WITHIN THE CURRENT SELECTION
+    '-------------------------------------------------------------------------
+    For Each tbl In Selection.Tables
+        
+        With tbl
+            
+            ' Auto-fit columns based on cell contents
+            .AutoFitBehavior wdAutoFitContent
+            
+            ' Prevent rows from splitting across pages
+            .Rows.AllowBreakAcrossPages = False
+            
+            ' Enable and standardize all table borders
+            .Borders.Enable = True
+            
+            .Borders(wdBorderLeft).LineStyle = wdLineStyleSingle
+            .Borders(wdBorderRight).LineStyle = wdLineStyleSingle
+            .Borders(wdBorderTop).LineStyle = wdLineStyleSingle
+            .Borders(wdBorderBottom).LineStyle = wdLineStyleSingle
+            .Borders(wdBorderHorizontal).LineStyle = wdLineStyleSingle
+            .Borders(wdBorderVertical).LineStyle = wdLineStyleSingle
+            
+            '-------------------------------------------------------------
+            ' VERTICAL ALIGNMENT
+            '-------------------------------------------------------------
+            ' Align all cell contents to the top for a compact layout.
+            For Each cel In .Range.Cells
+                cel.VerticalAlignment = 0
+            Next cel
+            
+            '-------------------------------------------------------------
+            ' HEADER ROW
+            '-------------------------------------------------------------
+            With .Rows(1)
+                
+                ' Repeat header row on subsequent pages
+                .HeadingFormat = True
+                
+                ' Bold header text
+                .Range.Font.Bold = True
+                
+                ' Apply custom header shading
+                .Shading.Texture = wdTextureNone
+                .Shading.ForegroundPatternColor = wdColorAutomatic
+                .Shading.BackgroundPatternColor = headerColor
+                
+            End With
+            
+        End With
+        
+    Next tbl
+
+CleanUp:
+    Application.ScreenUpdating = True
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    
+    MsgBox "Error " & Err.Number & ": " & Err.Description, _
+           vbCritical, "Table Formatting Error"
+End Sub
